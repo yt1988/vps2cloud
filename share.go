@@ -23,9 +23,16 @@ func siteURL() string {
 // A share link carries the whole result in the URL fragment, which browsers never send to a server. Format 2 is
 // binary (see docs/share-format.md): regions are bits in a bitmap in endpoint-list order rather than names, and
 // numbers are varints, which keeps a full 361-region run near 2,100 characters instead of 7,500. The list is named by a
-// fingerprint, and the site keeps every list it has served, so old links still decode after regions are added.
-// Never the IP.
+// fingerprint, and the site keeps every list it has served, so old links still decode after regions are added. A run
+// over both IP families carries one block per family. Never the IP.
 const shareFormat = 2
+
+const (
+	flagPeak = 1 << iota // 20:00–23:00 local
+	flagV6               // the only family is IPv6
+	flagCLI              // made by this tool
+	flagBoth             // two blocks: IPv4, then IPv6
+)
 
 var modeCode = map[string]byte{"tcp": 0, "https": 1, "icmp": 2}
 
@@ -40,18 +47,20 @@ func fingerprint(l *List) []byte {
 
 func fingerprintString(l *List) string { return base64.RawURLEncoding.EncodeToString(fingerprint(l)) }
 
-func encodeShare(res []*Result, l *List, modes []string, n, fam int, o *Origin, at time.Time) []byte {
+func encodeShare(secs []Section, l *List, modes []string, n int, o *Origin, at time.Time) []byte {
 	var b bytes.Buffer
 	uv := func(v uint64) { b.Write(binary.AppendUvarint(nil, v)) }
 	str := func(s string) { uv(uint64(len(s))); b.WriteString(s) }
 	ms10 := func(v float64) uint64 { return uint64(math.Max(0, math.Round(v*10))) }
 
-	flags := byte(4) // from the CLI
+	flags := byte(flagCLI)
 	if h := at.Hour(); h >= 20 && h < 23 {
-		flags |= 1
+		flags |= flagPeak
 	}
-	if fam == 6 {
-		flags |= 2
+	if len(secs) > 1 {
+		flags |= flagBoth
+	} else if secs[0].Fam == 6 {
+		flags |= flagV6
 	}
 	b.Write([]byte{shareFormat, flags, modeCode[modes[0]]})
 	uv(uint64(n))
@@ -65,30 +74,33 @@ func encodeShare(res []*Result, l *List, modes []string, n, fam int, o *Origin, 
 	str(cc)
 	str(org)
 
-	byID := map[string]*ModeResult{}
-	for _, r := range res {
-		if m := r.Primary(modes); m != nil && m.St.OK > 0 {
-			byID[r.E.ID] = m
+	// one block per family: region count, bitmap of regions with a result, then their numbers in list order
+	for _, s := range secs {
+		byID := map[string]*ModeResult{}
+		for _, r := range s.Res {
+			if m := r.Primary(modes); m != nil && m.St.OK > 0 {
+				byID[r.E.ID] = m
+			}
 		}
-	}
-	uv(uint64(len(l.Endpoints)))
-	bitmap := make([]byte, (len(l.Endpoints)+7)/8)
-	for i, e := range l.Endpoints {
-		if byID[e.ID] != nil {
-			bitmap[i/8] |= 1 << (i % 8)
+		uv(uint64(len(l.Endpoints)))
+		bitmap := make([]byte, (len(l.Endpoints)+7)/8)
+		for i, e := range l.Endpoints {
+			if byID[e.ID] != nil {
+				bitmap[i/8] |= 1 << (i % 8)
+			}
 		}
-	}
-	b.Write(bitmap)
-	for _, e := range l.Endpoints {
-		m := byID[e.ID]
-		if m == nil {
-			continue
+		b.Write(bitmap)
+		for _, e := range l.Endpoints {
+			m := byID[e.ID]
+			if m == nil {
+				continue
+			}
+			st := m.St
+			uv(ms10(st.Med))
+			uv(ms10(st.P90 - st.Med))
+			uv(ms10(st.Jit))
+			b.WriteByte(byte(math.Round(st.Loss * 100)))
 		}
-		st := m.St
-		uv(ms10(st.Med))
-		uv(ms10(st.P90 - st.Med))
-		uv(ms10(st.Jit))
-		b.WriteByte(byte(math.Round(st.Loss * 100)))
 	}
 
 	var z bytes.Buffer
@@ -98,6 +110,6 @@ func encodeShare(res []*Result, l *List, modes []string, n, fam int, o *Origin, 
 	return z.Bytes()
 }
 
-func shareLink(res []*Result, l *List, modes []string, n, fam int, o *Origin, at time.Time) string {
-	return siteURL() + "/r#s=" + base64.RawURLEncoding.EncodeToString(encodeShare(res, l, modes, n, fam, o, at))
+func shareLink(secs []Section, l *List, modes []string, n int, o *Origin, at time.Time) string {
+	return siteURL() + "/r#s=" + base64.RawURLEncoding.EncodeToString(encodeShare(secs, l, modes, n, o, at))
 }

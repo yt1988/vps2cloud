@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -37,6 +38,7 @@ How to measure
   -m, --mode MODE         tcp (default), https, icmp, or all (comma lists work too: tcp,icmp)
   -n, --count N           samples per region (default 10)
   -4 / -6                 IPv4 (default) or IPv6
+      --ip both           IPv4 and IPv6 in one run, reported as two parts of one result
   -t, --timeout DUR       per sample (default 2s)
       --gap DUR           pause between samples to one host (default 250ms)
   -C, --concurrency N     hosts measured at once (default 24; at most 2 per provider)
@@ -73,6 +75,7 @@ type opts struct {
 	maxMS                                                 float64
 	ver                                                   bool
 	lang                                                  string
+	ip                                                    string
 }
 
 func main() {
@@ -89,29 +92,19 @@ func main() {
 	if len(args) > 0 || !isTTY(os.Stdin) || !isTTY(os.Stdout) {
 		os.Exit(run(args, os.Stdout, os.Stderr))
 	}
-	// no options in a terminal: the menu, then one run per IP family chosen
+	// no options in a terminal: the menu, then the run it set up
 	l, err := loadList("", false, userAgent())
 	if err != nil {
 		os.Exit(run(args, os.Stdout, os.Stderr))
 	}
 	preloaded = l
-	runs := wizard(os.Stdin, os.Stdout, l, askLang)
-	if runs == nil {
-		os.Exit(130)
+	useColor = os.Getenv("NO_COLOR") == ""
+	chosen := wizard(os.Stdin, os.Stdout, l, askLang)
+	if chosen == nil {
+		os.Exit(0) // 0 on the first question, or the input ended
 	}
-	code := 0
-	for i, a := range runs {
-		if i > 0 {
-			fmt.Fprintln(os.Stdout)
-		}
-		if c := run(a, os.Stdout, os.Stderr); c != 0 {
-			code = c
-		}
-	}
-	fmt.Fprintln(os.Stdout, "\n"+T("again"))
-	for _, a := range runs {
-		fmt.Fprintln(os.Stdout, "  "+commandLine(a))
-	}
+	code := run(chosen, os.Stdout, os.Stderr)
+	fmt.Fprintf(os.Stdout, "\n%s\n  %s\n", paint(cDim, T("again")), paint(cCyan, commandLine(chosen)))
 	os.Exit(code)
 }
 
@@ -148,6 +141,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	str(&o.preset, "", "preset")
 	str(&o.endpoints, "", "endpoints")
 	str(&o.lang, "", "lang")
+	str(&o.ip, "", "ip")
 	str(&o.timeout, "2s", "t", "timeout")
 	str(&o.gap, "250ms", "gap")
 	num(&o.n, 10, "n", "count")
@@ -215,12 +209,23 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if o.n < 1 || o.n > 100 || o.conc < 1 {
 		return fail("--count must be 1–100 and --concurrency at least 1")
 	}
-	if o.v4 && o.v6 {
-		return fail("pick one of -4 and -6")
+	fams := []int{4}
+	switch {
+	case o.v4 && o.v6:
+		fams = []int{4, 6}
+	case o.v6:
+		fams = []int{6}
 	}
-	fam := 4
-	if o.v6 {
-		fam = 6
+	switch strings.ToLower(o.ip) {
+	case "":
+	case "4":
+		fams = []int{4}
+	case "6":
+		fams = []int{6}
+	case "both", "46", "4,6", "dual":
+		fams = []int{4, 6}
+	default:
+		return fail("unknown --ip %q (4, 6, both)", o.ip)
 	}
 
 	ua := userAgent()
@@ -246,36 +251,51 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	color := !o.noColor && os.Getenv("NO_COLOR") == "" && isTTY(stdout)
+	useColor = !o.noColor && os.Getenv("NO_COLOR") == "" && isTTY(stdout)
 	showProgress := !o.quiet && isTTY(stderr)
-	pl := Plan{Probe: Probe{N: o.n, Gap: gap, Timeout: timeout, UA: ua}, Modes: modes, Fam: fam, Concurrency: o.conc, VendorCap: vendorCap}
+	pl := Plan{Probe: Probe{N: o.n, Gap: gap, Timeout: timeout, UA: ua}, Modes: modes, Fams: fams, Concurrency: o.conc, VendorCap: vendorCap, ICMPOK: map[int]bool{}}
 
 	if contains(modes, "icmp") {
-		if c, _, err := icmpListen(fam); err == nil {
-			c.Close()
-			pl.ICMPOK = true
-		} else if len(modes) == 1 {
-			return fail("ICMP needs root, CAP_NET_RAW (setcap cap_net_raw+ep vps2cloud) or a ping_group_range that covers you: %v", err)
-		} else if !o.quiet {
-			fmt.Fprintln(stderr, "vps2cloud: "+T("icmpSkip"))
+		var icmpErr error
+		for _, f := range fams {
+			if c, _, err := icmpListen(f); err == nil {
+				c.Close()
+				pl.ICMPOK[f] = true
+			} else {
+				icmpErr = err
+			}
+		}
+		if icmpErr != nil && len(pl.ICMPOK) == 0 && len(modes) == 1 {
+			return fail("ICMP needs root, CAP_NET_RAW (setcap cap_net_raw+ep vps2cloud) or a ping_group_range that covers you: %v", icmpErr)
+		} else if icmpErr != nil && !o.quiet {
+			fmt.Fprintln(stderr, paint(cYellow, "vps2cloud: "+T("icmpSkip")))
 		}
 	}
 
 	start := time.Now()
 	orig := make(chan *Origin, 1)
-	go func() { orig <- origin(fam, ua) }()
-	progress := func(phase string) func(done, total int, e Endpoint) {
+	go func() { orig <- origin(fams[0], ua) }()
+	progressColor := !o.noColor && os.Getenv("NO_COLOR") == "" && isTTY(stderr)
+	progress := func(phase string) func(done, total int, j Job) {
 		if !showProgress {
 			return nil
 		}
-		return func(done, total int, e Endpoint) {
-			fmt.Fprintf(stderr, "\r\x1b[K%s %d/%d  %s", phase, done, total, e.ID)
+		return func(done, total int, j Job) {
+			fam := ""
+			if len(fams) > 1 {
+				fam = " IPv" + strconv.Itoa(j.Fam)
+			}
+			line := fmt.Sprintf("%s %d/%d  %s%s", phase, done, total, j.E.ID, fam)
+			if progressColor {
+				line = fmt.Sprintf("%s %s  %s%s", cCyan+phase+cReset, cBold+strconv.Itoa(done)+"/"+strconv.Itoa(total)+cReset, j.E.ID, cDim+fam+cReset)
+			}
+			fmt.Fprint(stderr, "\r\x1b[K"+line)
 		}
 	}
 
 	if o.near > 0 && o.near < len(eps) {
 		// a short TCP pass over everything picks the closest regions for the full measurement
-		quick := Plan{Probe: Probe{N: 2, Gap: gap, Timeout: timeout, UA: ua}, Modes: []string{"tcp"}, Fam: fam, Concurrency: o.conc, VendorCap: vendorCap}
+		quick := Plan{Probe: Probe{N: 2, Gap: gap, Timeout: timeout, UA: ua}, Modes: []string{"tcp"}, Fams: fams[:1], Concurrency: o.conc, VendorCap: vendorCap}
 		first := quick.Run(ctx, eps, progress(T("scanning")))
 		sortResults(first, quick.Modes, "min")
 		eps = eps[:0]
@@ -300,23 +320,26 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "vps2cloud: interrupted")
 		return 130
 	}
-	// with -6, regions without an IPv6 address are left out and counted instead of listed as failures
-	noV6 := 0
-	if fam == 6 {
-		kept := res[:0]
+	// one section per family; regions without an IPv6 address are left out of the IPv6 one and counted instead
+	var secs []Section
+	for _, f := range fams {
+		s := Section{Fam: f}
 		for _, r := range res {
-			if r.Err == errNoV6 {
-				noV6++
+			if r.Fam != f {
 				continue
 			}
-			kept = append(kept, r)
+			if r.Err == errNoV6 {
+				s.NoV6++
+				continue
+			}
+			s.Res = append(s.Res, r)
 		}
-		res = kept
+		sortResults(s.Res, modes, o.sortBy)
+		secs = append(secs, s)
 	}
-	sortResults(res, modes, o.sortBy)
 
-	v := View{Res: res, Modes: modes, List: list, Origin: <-orig, ShowIP: o.showIP, Fam: fam, N: o.n, At: start, Took: time.Since(start),
-		Preset: o.preset, Top: o.top, Color: color, SortBy: o.sortBy, NoV6: noV6}
+	v := View{Secs: secs, Modes: modes, List: list, Origin: <-orig, ShowIP: o.showIP, N: o.n, At: start, Took: time.Since(start),
+		Preset: o.preset, Top: o.top, SortBy: o.sortBy}
 	if v.Top < 0 {
 		v.Top = 0
 		if o.output == "md" {
@@ -324,7 +347,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if !o.noLink {
-		v.Link = shareLink(res, list, modes, o.n, fam, v.Origin, start)
+		v.Link = shareLink(secs, list, modes, o.n, v.Origin, start)
 	}
 	switch o.output {
 	case "md":
@@ -338,9 +361,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	if o.maxMS > 0 {
 		best := -1.0
-		for _, r := range res {
-			if p := r.Primary(modes); p != nil && p.St.OK > 0 && (best < 0 || p.St.Med < best) {
-				best = p.St.Med
+		for _, s := range secs {
+			for _, r := range s.Res {
+				if p := r.Primary(modes); p != nil && p.St.OK > 0 && (best < 0 || p.St.Med < best) {
+					best = p.St.Med
+				}
 			}
 		}
 		if best < 0 || best > o.maxMS {

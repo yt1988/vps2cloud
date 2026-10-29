@@ -31,21 +31,26 @@ func fits(st Stats, p [3]float64) bool {
 	return st.OK > 0 && (p[0] == 0 || st.Med <= p[0]) && (p[1] == 0 || st.Jit <= p[1]) && st.Loss*100 <= p[2]
 }
 
+// Section is the results of one IP family. A run over both families has two, shown as parts of one report.
+type Section struct {
+	Fam  int
+	Res  []*Result
+	NoV6 int // regions left out of the IPv6 section for having no IPv6 address
+}
+
 type View struct {
-	Res    []*Result
+	Secs   []Section
 	Modes  []string
 	List   *List
 	Origin *Origin
 	ShowIP bool
-	Fam, N int
+	N      int
 	At     time.Time
 	Took   time.Duration
 	Preset string
 	Top    int
 	Link   string
-	Color  bool
 	SortBy string
-	NoV6   int // regions left out under -6 for having no IPv6 address
 }
 
 // sortResults ranks by the first mode: answered hosts first, by the chosen key, then by median.
@@ -82,12 +87,20 @@ func sortResults(res []*Result, modes []string, by string) {
 	})
 }
 
+func (v View) fams() string {
+	var f []string
+	for _, s := range v.Secs {
+		f = append(f, "IPv"+strconv.Itoa(s.Fam))
+	}
+	return strings.Join(f, " + ")
+}
+
 func (v View) headline() string {
 	var m []string
 	for _, x := range v.Modes {
 		m = append(m, T("m_"+x))
 	}
-	return fmt.Sprintf("%s · %s · IPv%d · %s", strings.Join(m, " + "), T("nSamples", v.N), v.Fam, v.At.UTC().Format("2006-01-02 15:04 UTC"))
+	return fmt.Sprintf("%s · %s · %s · %s", strings.Join(m, " + "), T("nSamples", v.N), v.fams(), v.At.UTC().Format("2006-01-02 15:04 UTC"))
 }
 
 func (v View) from() string {
@@ -122,26 +135,21 @@ func (v View) vendorName(id string) string {
 	return id
 }
 
-func (v View) shown() []*Result {
-	if v.Top > 0 && v.Top < len(v.Res) {
-		return v.Res[:v.Top]
+func (v View) shown(s Section) []*Result {
+	if v.Top > 0 && v.Top < len(s.Res) {
+		return s.Res[:v.Top]
 	}
-	return v.Res
+	return s.Res
 }
 
-const (
-	cReset = "\x1b[0m"
-	cDim   = "\x1b[2m"
-	cBold  = "\x1b[1m"
-)
-
-var tierColor = []string{"\x1b[32m", "\x1b[36m", "\x1b[33m", "\x1b[35m", "\x1b[31m"}
-
-func (v View) c(code, s string) string {
-	if !v.Color || s == "" {
-		return s
+func answered(s Section, modes []string) int {
+	ok := 0
+	for _, r := range s.Res {
+		if p := r.Primary(modes); p != nil && p.St.OK > 0 {
+			ok++
+		}
 	}
-	return code + s + cReset
+	return ok
 }
 
 func stripANSI(s string) string {
@@ -158,10 +166,28 @@ func stripANSI(s string) string {
 	return b.String()
 }
 
-// Table: one row per region, ranked; with several modes each gets a median column. Then the best region per provider.
+// ms paints a latency in its tier's color.
+func msc(x float64) string { return paint(tierColor[tier(x)], f1(x)) }
+
+// Table: the run's headline and origin, then per IP family a ranked table (with several modes each gets a median
+// column), the best region of each provider and how many answered; then the time taken and the share link.
 func (v View) Table(w io.Writer) {
-	fmt.Fprintf(w, "%s %s\n", v.c(cBold, "VPS2Cloud "+version), v.c(cDim, "· "+v.headline()))
-	fmt.Fprintf(w, "%s %s\n\n", v.c(cDim, T("from")), v.from())
+	fmt.Fprintf(w, "%s %s\n", paint(cBold, "VPS2Cloud "+version), paint(cDim, "· "+v.headline()))
+	fmt.Fprintf(w, "%s %s\n", paint(cDim, T("from")), paint(cBold, v.from()))
+	for _, s := range v.Secs {
+		fmt.Fprintln(w)
+		if len(v.Secs) > 1 {
+			fmt.Fprintf(w, "%s\n", heading("IPv"+strconv.Itoa(s.Fam)))
+		}
+		v.table(w, s)
+	}
+	fmt.Fprintf(w, "\n%s\n", paint(cDim, T("took", v.Took.Round(time.Second), v.List.Source)))
+	if v.Link != "" {
+		fmt.Fprintf(w, "%s %s\n", paint(cBold, T("link")), paint(cCyan, v.Link))
+	}
+}
+
+func (v View) table(w io.Writer, s Section) {
 	head := []string{"#", T("h_provider"), T("h_region"), T("h_city"), T("h_median"), T("h_min"), T("h_p90"), T("h_jitter"), T("h_loss"), T("h_tier")}
 	multi := len(v.Modes) > 1
 	if multi {
@@ -177,20 +203,20 @@ func (v View) Table(w io.Writer) {
 		textTail = 2
 	}
 	var rows [][]string
-	for i, r := range v.shown() {
+	for i, r := range v.shown(s) {
 		p := r.Primary(v.Modes)
-		row := []string{strconv.Itoa(i + 1), v.vendorName(r.E.Vendor), r.E.Region, r.E.City}
+		row := []string{paint(cDim, strconv.Itoa(i+1)), v.vendorName(r.E.Vendor), r.E.Region, paint(cDim, r.E.City)}
 		cell := func(m *ModeResult) string {
 			if r.Err != "" {
-				return v.c(cDim, r.Err)
+				return paint(cDim, r.Err)
 			}
 			if m == nil || m.St.OK == 0 {
 				if m != nil && m.Err != "" {
-					return v.c(cDim, m.Err)
+					return paint(cDim, m.Err)
 				}
-				return v.c(cDim, "–")
+				return paint(cDim, "–")
 			}
-			return f1(m.St.Med)
+			return msc(m.St.Med)
 		}
 		if multi {
 			for _, m := range v.Modes {
@@ -206,13 +232,19 @@ func (v View) Table(w io.Writer) {
 		}
 		if p != nil && p.St.OK > 0 {
 			t := tier(p.St.Med)
-			row = append(row, "±"+f1(p.St.Jit), fmt.Sprintf("%.0f%%", p.St.Loss*100), v.c(tierColor[t], "T"+strconv.Itoa(t)))
+			loss := fmt.Sprintf("%.0f%%", p.St.Loss*100)
+			if p.St.Loss > 0 {
+				loss = paint(cRed, loss)
+			} else {
+				loss = paint(cDim, loss)
+			}
+			row = append(row, "±"+f1(p.St.Jit), loss, paint(tierColor[t], "T"+strconv.Itoa(t)))
 		} else {
 			row = append(row, "", "", "")
 		}
 		if v.Preset != "" {
 			if p != nil && fits(p.St, presets[v.Preset]) {
-				row = append(row, v.c(tierColor[0], "✓"))
+				row = append(row, paint(cGreen, "✓"))
 			} else {
 				row = append(row, "")
 			}
@@ -231,60 +263,51 @@ func (v View) Table(w io.Writer) {
 		}
 	}
 	numeric := func(i int) bool { return i == 0 || (i >= 4 && i < len(head)-textTail) }
-	line := func(cells []string, dim bool) {
+	line := func(cells []string) string {
 		var parts []string
 		for i, cl := range cells {
 			parts = append(parts, padText(cl, widths[i], numeric(i)))
 		}
-		s := strings.TrimRight(strings.Join(parts, "  "), " ")
-		if dim {
-			s = v.c(cDim, s)
-		}
-		fmt.Fprintln(w, s)
+		return strings.TrimRight(strings.Join(parts, "  "), " ")
 	}
-	line(head, true)
+	fmt.Fprintln(w, paint(cDim, line(head)))
 	for _, row := range rows {
-		line(row, false)
+		fmt.Fprintln(w, line(row))
 	}
-	if v.Top > 0 && v.Top < len(v.Res) {
-		fmt.Fprintln(w, v.c(cDim, T("more", len(v.Res)-v.Top)))
+	if v.Top > 0 && v.Top < len(s.Res) {
+		fmt.Fprintln(w, paint(cDim, T("more", len(s.Res)-v.Top)))
 	}
-	// the best region of each provider, in rank order
+	// the best region of each provider, in rank order, in aligned columns
 	seen := map[string]bool{}
-	var best []string
-	for _, r := range v.Res {
+	var best [][3]string
+	for _, r := range s.Res {
 		p := r.Primary(v.Modes)
 		if seen[r.E.Vendor] || p == nil || p.St.OK == 0 {
 			continue
 		}
 		seen[r.E.Vendor] = true
-		best = append(best, fmt.Sprintf("%s %s %s ms", v.vendorName(r.E.Vendor), r.E.Region, f1(p.St.Med)))
+		best = append(best, [3]string{v.vendorName(r.E.Vendor), r.E.Region, msc(p.St.Med) + " ms"})
 	}
-	if len(seen) > 1 {
-		fmt.Fprintf(w, "\n%s\n", v.c(cBold, T("best")))
+	if len(best) > 1 {
+		fmt.Fprintf(w, "\n%s\n", paint(cBold, T("best")))
+		wn, wr := 0, 0
 		for _, b := range best {
-			fmt.Fprintln(w, "  "+b)
+			wn, wr = max(wn, textWidth(b[0])), max(wr, textWidth(b[1]))
 		}
-	}
-	ok := 0
-	for _, r := range v.Res {
-		if p := r.Primary(v.Modes); p != nil && p.St.OK > 0 {
-			ok++
+		for _, b := range best {
+			fmt.Fprintf(w, "  %s  %s  %s\n", padText(b[0], wn, false), padText(b[1], wr, false), b[2])
 		}
 	}
 	noV6 := ""
-	if v.NoV6 > 0 {
-		noV6 = T("noV6", v.NoV6)
+	if s.NoV6 > 0 {
+		noV6 = T("noV6", s.NoV6)
 	}
-	fmt.Fprintf(w, "\n%s\n", v.c(cDim, T("summary", ok, len(v.Res), noV6, v.Took.Round(time.Second), v.List.Source)))
-	if v.Link != "" {
-		fmt.Fprintf(w, "%s %s\n", v.c(cBold, T("link")), v.Link)
-	}
+	fmt.Fprintf(w, "%s\n", paint(cDim, T("answered", answered(s, v.Modes), len(s.Res), noV6)))
 }
 
-// Markdown: a table to paste into a forum post or an issue, with the share link for the full result.
+// Markdown: a table per IP family to paste into a forum post or an issue, with the share link for the full result.
 func (v View) Markdown(w io.Writer) {
-	fmt.Fprintf(w, "**VPS2Cloud** %s %s · %s\n\n", T("from"), v.from(), v.headline())
+	fmt.Fprintf(w, "**VPS2Cloud** %s %s · %s\n", T("from"), v.from(), v.headline())
 	first := fmt.Sprintf("| # | %s | %s | %s |", T("h_provider"), T("h_region"), T("h_city"))
 	cols := first + fmt.Sprintf(" %s | %s | %s |", T("h_median"), T("h_jitter"), T("h_loss"))
 	if len(v.Modes) > 1 {
@@ -294,39 +317,44 @@ func (v View) Markdown(w io.Writer) {
 		}
 		cols += fmt.Sprintf(" %s | %s |", T("h_jitter"), T("h_loss"))
 	}
-	fmt.Fprintln(w, cols)
 	sep := "|---:|---|---|---|"
 	for i := 4; i < strings.Count(cols, "|")-1; i++ {
 		sep += "---:|"
 	}
-	fmt.Fprintln(w, sep)
-	for i, r := range v.shown() {
-		p := r.Primary(v.Modes)
-		if p == nil || p.St.OK == 0 {
-			continue
+	for _, s := range v.Secs {
+		fmt.Fprintln(w)
+		if len(v.Secs) > 1 {
+			fmt.Fprintf(w, "**IPv%d**\n\n", s.Fam)
 		}
-		row := fmt.Sprintf("| %d | %s | %s | %s |", i+1, v.vendorName(r.E.Vendor), r.E.Region, r.E.City)
-		if len(v.Modes) > 1 {
-			for _, m := range v.Modes {
-				if x := r.Modes[m]; x != nil && x.St.OK > 0 {
-					row += " " + f1(x.St.Med) + " |"
-				} else {
-					row += " – |"
-				}
+		fmt.Fprintln(w, cols)
+		fmt.Fprintln(w, sep)
+		for i, r := range v.shown(s) {
+			p := r.Primary(v.Modes)
+			if p == nil || p.St.OK == 0 {
+				continue
 			}
-		} else {
-			row += " " + f1(p.St.Med) + " ms |"
+			row := fmt.Sprintf("| %d | %s | %s | %s |", i+1, v.vendorName(r.E.Vendor), r.E.Region, r.E.City)
+			if len(v.Modes) > 1 {
+				for _, m := range v.Modes {
+					if x := r.Modes[m]; x != nil && x.St.OK > 0 {
+						row += " " + f1(x.St.Med) + " |"
+					} else {
+						row += " – |"
+					}
+				}
+			} else {
+				row += " " + f1(p.St.Med) + " ms |"
+			}
+			row += fmt.Sprintf(" ±%s | %.0f%% |", f1(p.St.Jit), p.St.Loss*100)
+			fmt.Fprintln(w, row)
 		}
-		row += fmt.Sprintf(" ±%s | %.0f%% |", f1(p.St.Jit), p.St.Loss*100)
-		fmt.Fprintln(w, row)
-	}
-	if v.Top > 0 && v.Top < len(v.Res) {
-		fmt.Fprintf(w, "\n_%s_", T("topOf", v.Top, len(v.Res)))
+		if v.Top > 0 && v.Top < len(s.Res) {
+			fmt.Fprintf(w, "\n_%s_\n", T("topOf", v.Top, len(s.Res)))
+		}
 	}
 	if v.Link != "" {
-		fmt.Fprintf(w, " [%s](%s)", T("fullResult"), v.Link)
+		fmt.Fprintf(w, "\n[%s](%s)\n", T("fullResult"), v.Link)
 	}
-	fmt.Fprintln(w)
 }
 
 type jsonStats struct {
@@ -366,9 +394,11 @@ func toJSONStats(m *ModeResult) jsonStats {
 	return j
 }
 
+// JSON lists every region of every family; each row names its IP family.
 func (v View) JSON(w io.Writer) {
 	type row struct {
 		ID        string               `json:"id"`
+		Family    int                  `json:"ip_family"`
 		Provider  string               `json:"provider"`
 		Region    string               `json:"region"`
 		City      string               `json:"city"`
@@ -386,32 +416,42 @@ func (v View) JSON(w io.Writer) {
 		c.IP = ""
 		o = &c
 	}
+	var fams []int
+	noV6 := 0
+	for _, s := range v.Secs {
+		fams = append(fams, s.Fam)
+		noV6 += s.NoV6
+	}
 	out := struct {
 		Tool      string    `json:"tool"`
 		Version   string    `json:"version"`
 		Time      time.Time `json:"time"`
 		Modes     []string  `json:"modes"`
 		Samples   int       `json:"samples"`
-		Family    int       `json:"ip_family"`
+		Families  []int     `json:"ip_families"`
+		NoV6      int       `json:"no_ipv6,omitempty"`
 		From      *Origin   `json:"from"`
 		Endpoints string    `json:"endpoints"`
 		Preset    string    `json:"preset,omitempty"`
 		Link      string    `json:"link,omitempty"`
 		Regions   []row     `json:"regions"`
-	}{"vps2cloud", version, v.At.UTC(), v.Modes, v.N, v.Fam, o, v.List.Source, v.Preset, v.Link, nil}
-	for _, r := range v.shown() {
-		x := row{ID: r.E.ID, Provider: r.E.Vendor, Region: r.E.Region, City: r.E.City, Country: r.E.Country, Continent: r.E.Continent, Host: r.E.Host(v.Fam), Addr: r.Addr, Error: r.Err, Results: map[string]jsonStats{}}
-		for m, mr := range r.Modes {
-			x.Results[m] = toJSONStats(mr)
-		}
-		if v.Preset != "" {
-			f := false
-			if p := r.Primary(v.Modes); p != nil {
-				f = fits(p.St, presets[v.Preset])
+	}{"vps2cloud", version, v.At.UTC(), v.Modes, v.N, fams, noV6, o, v.List.Source, v.Preset, v.Link, nil}
+	for _, s := range v.Secs {
+		for _, r := range v.shown(s) {
+			x := row{ID: r.E.ID, Family: s.Fam, Provider: r.E.Vendor, Region: r.E.Region, City: r.E.City, Country: r.E.Country, Continent: r.E.Continent,
+				Host: r.E.Host(s.Fam), Addr: r.Addr, Error: r.Err, Results: map[string]jsonStats{}}
+			for m, mr := range r.Modes {
+				x.Results[m] = toJSONStats(mr)
 			}
-			x.Fits = &f
+			if v.Preset != "" {
+				f := false
+				if p := r.Primary(v.Modes); p != nil {
+					f = fits(p.St, presets[v.Preset])
+				}
+				x.Fits = &f
+			}
+			out.Regions = append(out.Regions, x)
 		}
-		out.Regions = append(out.Regions, x)
 	}
 	e := json.NewEncoder(w)
 	e.SetIndent("", "  ")
@@ -420,27 +460,30 @@ func (v View) JSON(w io.Writer) {
 
 func (v View) CSV(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{"id", "provider", "region", "city", "country", "mode", "samples", "ok", "loss_pct", "min_ms", "median_ms", "p90_ms", "max_ms", "jitter_ms", "tier", "error"})
+	cw.Write([]string{"id", "provider", "region", "city", "country", "ip_family", "mode", "samples", "ok", "loss_pct", "min_ms", "median_ms", "p90_ms", "max_ms", "jitter_ms", "tier", "error"})
 	num := func(x float64, ok bool) string {
 		if !ok {
 			return ""
 		}
 		return strconv.FormatFloat(math.Round(x*1000)/1000, 'f', -1, 64)
 	}
-	for _, r := range v.shown() {
-		for _, m := range v.Modes {
-			mr := r.Modes[m]
-			if mr == nil {
-				cw.Write([]string{r.E.ID, r.E.Vendor, r.E.Region, r.E.City, r.E.Country, m, "", "", "", "", "", "", "", "", "", r.Err})
-				continue
+	for _, s := range v.Secs {
+		fam := strconv.Itoa(s.Fam)
+		for _, r := range v.shown(s) {
+			for _, m := range v.Modes {
+				mr := r.Modes[m]
+				if mr == nil {
+					cw.Write([]string{r.E.ID, r.E.Vendor, r.E.Region, r.E.City, r.E.Country, fam, m, "", "", "", "", "", "", "", "", "", r.Err})
+					continue
+				}
+				st, ok := mr.St, mr.St.OK > 0
+				t := ""
+				if ok {
+					t = strconv.Itoa(tier(st.Med))
+				}
+				cw.Write([]string{r.E.ID, r.E.Vendor, r.E.Region, r.E.City, r.E.Country, fam, m, strconv.Itoa(st.N), strconv.Itoa(st.OK), num(st.Loss*100, true),
+					num(st.Min, ok), num(st.Med, ok), num(st.P90, ok), num(st.Max, ok), num(st.Jit, ok), t, mr.Err})
 			}
-			st, ok := mr.St, mr.St.OK > 0
-			t := ""
-			if ok {
-				t = strconv.Itoa(tier(st.Med))
-			}
-			cw.Write([]string{r.E.ID, r.E.Vendor, r.E.Region, r.E.City, r.E.Country, m, strconv.Itoa(st.N), strconv.Itoa(st.OK), num(st.Loss*100, true),
-				num(st.Min, ok), num(st.Med, ok), num(st.P90, ok), num(st.Max, ok), num(st.Jit, ok), t, mr.Err})
 		}
 	}
 	cw.Flush()

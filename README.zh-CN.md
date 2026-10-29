@@ -44,11 +44,11 @@ curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.
 
 ## 用法
 
-在终端里不带参数运行 `vps2cloud`，它会一步步问你要测什么，直接回车就是默认值：
+在终端里不带参数运行 `vps2cloud`，它会一步步问你要测什么（带配色），直接回车就是默认值，输入 0 返回上一步（第一个问题里 0 是退出）：
 
 ```
 测什么？              全部区域 · 最近的 20 个 · 按厂商选 · 按大洲选 · 语言
-IP 版本？             IPv4 · IPv6 · 两个都测（本机有 IPv6 时才会问）
+IP 版本？             IPv4 · IPv6 · 两个一起测（本机有 IPv6 时才会问）
 怎么测？              TCP 握手 · HTTPS · ICMP · 三种都测
 每个区域采样几次？    5 · 10 · 20
 ```
@@ -62,6 +62,7 @@ vps2cloud -p aws,gcp -r 'eu-*'     # 指定厂商，只测欧洲区域
 vps2cloud --continent as --top 10  # 亚洲，只看最快的 10 个
 vps2cloud -m all -p hetzner        # TCP、HTTPS、ICMP 三种并排
 vps2cloud -6                       # 走 IPv6（没有 IPv6 的区域会跳过并计数）
+vps2cloud --ip both                # IPv4 和 IPv6 一次测完：一份报告分两部分，一个分享链接
 vps2cloud --preset game            # 标出适合打游戏的区域（中位数 ≤ 60 ms、抖动 ≤ 10、不丢包）
 vps2cloud -o md                    # 输出 Markdown 表格，贴到论坛或 issue
 vps2cloud -o json | jq '.regions[0]'
@@ -73,7 +74,7 @@ vps2cloud --list                   # 列出厂商；--list -p aws 列出 AWS 的
 
 ### 语言
 
-第一次打开菜单时会先让你选语言（English、简体中文、繁體中文、日本語、한국어、Español、Français、Deutsch、Português、Русский），选择会保存在 `~/.config/vps2cloud/config.json`，之后不再询问。以后想改，用菜单最后一项：它同时用当前语言和英语标注（比如 `语言 / Language`），即使切到了看不懂的语言也能找回来。只想临时换一次，用 `--lang ja` 或 `V2C_LANG=ja`。菜单、结果表格和 Markdown 都跟随语言；JSON 和 CSV 的字段名保持英文。
+第一次打开菜单时会先让你选语言（English、简体中文、繁體中文、日本語、한국어、Español、Français、Deutsch、Português、Русский），选择会保存在 `~/.config/vps2cloud/config.json`，之后不再询问。以后想改，用菜单最后一项：它同时用当前语言和英语标注（比如 `语言 / Language`），即使切到了看不懂的语言也能找回来。只想临时换一次，用 `--lang ja` 或 `V2C_LANG=ja`。菜单、结果表格和 Markdown 都跟随语言；JSON 和 CSV 的字段名保持英文（每一行带 `ip_family` 标明 IP 版本）。颜色只在终端里显示，`--no-color` 或环境变量 `NO_COLOR` 可以关掉。
 
 ### 测的是什么
 

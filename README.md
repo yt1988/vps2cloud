@@ -44,11 +44,11 @@ Or download a binary from [Releases](https://github.com/yt1988/vps2cloud/release
 
 ## Usage
 
-Run `vps2cloud` in a terminal with no options and it asks what to test, step by step; Enter keeps each default:
+Run `vps2cloud` in a terminal with no options and it asks what to test, step by step, in color; Enter keeps each default and 0 goes back a step (0 on the first question exits):
 
 ```
 What to test?            all regions · the 20 nearest · choose providers · choose continents · language
-IP version?              IPv4 · IPv6 · both (asked when the machine has IPv6)
+IP version?              IPv4 · IPv6 · both in one run (asked when the machine has IPv6)
 How to measure?          TCP handshake · HTTPS · ICMP · all three
 Samples per region?      5 · 10 · 20
 ```
@@ -62,6 +62,7 @@ vps2cloud -p aws,gcp -r 'eu-*'     # some providers, European regions
 vps2cloud --continent as --top 10  # Asia, the 10 best
 vps2cloud -m all -p hetzner        # TCP, HTTPS and ICMP side by side
 vps2cloud -6                       # over IPv6 (regions without IPv6 are skipped and counted)
+vps2cloud --ip both                # IPv4 and IPv6 in one run: one report with a part for each, one share link
 vps2cloud --preset game            # mark regions that fit gaming (median ≤ 60 ms, jitter ≤ 10, no loss)
 vps2cloud -o md                    # Markdown table for a forum post or an issue
 vps2cloud -o json | jq '.regions[0]'
@@ -73,7 +74,7 @@ vps2cloud --list                   # providers; --list -p aws lists AWS's region
 
 ### Language
 
-The first time the menu runs it asks for a language (English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch, Português, Русский) and remembers it in `~/.config/vps2cloud/config.json`. Change it later with the menu's last item, which is labelled in the current language and in English (for example `语言 / Language`), so you can always find your way back. For one run, use `--lang ja` or `V2C_LANG=ja`. The menu, the table and the Markdown follow the language; JSON and CSV keep English keys.
+The first time the menu runs it asks for a language (English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch, Português, Русский) and remembers it in `~/.config/vps2cloud/config.json`. Change it later with the menu's last item, which is labelled in the current language and in English (for example `语言 / Language`), so you can always find your way back. For one run, use `--lang ja` or `V2C_LANG=ja`. The menu, the table and the Markdown follow the language; JSON and CSV keep English keys (each row names its `ip_family`). Colors appear only in a terminal; `--no-color` or `NO_COLOR` turns them off.
 
 ### What it measures
 

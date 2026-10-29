@@ -69,6 +69,7 @@ type ModeResult struct {
 
 type Result struct {
 	E     Endpoint
+	Fam   int // 4 or 6
 	Addr  string
 	Err   string // name resolution failed: no mode ran
 	Modes map[string]*ModeResult
@@ -82,16 +83,32 @@ const errNoV6 = "no IPv6"
 type Plan struct {
 	Probe
 	Modes       []string
-	Fam         int
+	Fams        []int // 4, 6 or both: with both, each region is measured over IPv4 and then IPv6 in the same run
 	Concurrency int
 	VendorCap   int
-	ICMPOK      bool
+	ICMPOK      map[int]bool
 }
 
-// Run measures every endpoint: at most VendorCap hosts of one provider and Concurrency hosts overall at a time, with the
-// modes of one host run one after the other.
-func (pl Plan) Run(ctx context.Context, eps []Endpoint, progress func(done, total int, e Endpoint)) []*Result {
-	out := make([]*Result, len(eps))
+type Job struct {
+	E   Endpoint
+	Fam int
+}
+
+func (pl Plan) jobs(eps []Endpoint) []Job {
+	var out []Job
+	for _, e := range eps {
+		for _, f := range pl.Fams {
+			out = append(out, Job{e, f})
+		}
+	}
+	return out
+}
+
+// Run measures every endpoint over every family: at most VendorCap hosts of one provider and Concurrency hosts overall
+// at a time (an endpoint's IPv4 and IPv6 hosts count separately), with the modes of one host run one after the other.
+func (pl Plan) Run(ctx context.Context, eps []Endpoint, progress func(done, total int, j Job)) []*Result {
+	jobs := pl.jobs(eps)
+	out := make([]*Result, len(jobs))
 	global := make(chan struct{}, pl.Concurrency)
 	vendor := map[string]chan struct{}{}
 	for _, e := range eps {
@@ -102,19 +119,19 @@ func (pl Plan) Run(ctx context.Context, eps []Endpoint, progress func(done, tota
 	var mu sync.Mutex
 	done := 0
 	var wg sync.WaitGroup
-	for i, e := range eps {
+	for i, j := range jobs {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			vendor[e.Vendor] <- struct{}{}
+			vendor[j.E.Vendor] <- struct{}{}
 			global <- struct{}{}
-			out[i] = pl.one(ctx, e)
+			out[i] = pl.one(ctx, j.E, j.Fam)
 			<-global
-			<-vendor[e.Vendor]
+			<-vendor[j.E.Vendor]
 			mu.Lock()
 			done++
 			if progress != nil {
-				progress(done, len(eps), e)
+				progress(done, len(jobs), j)
 			}
 			mu.Unlock()
 		}()
@@ -123,12 +140,12 @@ func (pl Plan) Run(ctx context.Context, eps []Endpoint, progress func(done, tota
 	return out
 }
 
-func (pl Plan) one(ctx context.Context, e Endpoint) *Result {
-	r := &Result{E: e, Modes: map[string]*ModeResult{}}
-	ip, err := resolve(ctx, e.Host(pl.Fam), pl.Fam)
+func (pl Plan) one(ctx context.Context, e Endpoint, fam int) *Result {
+	r := &Result{E: e, Fam: fam, Modes: map[string]*ModeResult{}}
+	ip, err := resolve(ctx, e.Host(fam), fam)
 	if err != nil {
 		r.Err = "dns: " + shortErr(err)
-		if pl.Fam == 6 {
+		if fam == 6 {
 			r.Err = errNoV6 // most often the host has no IPv6 address at all
 		}
 		return r
@@ -141,9 +158,9 @@ func (pl Plan) one(ctx context.Context, e Endpoint) *Result {
 		case "tcp":
 			s, err = pl.TCP(ctx, ip, e.Port())
 		case "https":
-			s, mr.Reconn, err = pl.HTTPS(ctx, e, pl.Fam, ip)
+			s, mr.Reconn, err = pl.HTTPS(ctx, e, fam, ip)
 		case "icmp":
-			if !pl.ICMPOK {
+			if !pl.ICMPOK[fam] {
 				mr.Err = "icmp unavailable"
 			} else if e.ICMP != nil && !*e.ICMP {
 				mr.Err = "host drops icmp"
