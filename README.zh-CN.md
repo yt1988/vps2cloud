@@ -10,23 +10,7 @@
 
 **网站：[v2c.1ms.dog](https://v2c.1ms.dog)**：在页面上选厂商、大洲、IP 版本、测量方式和采样次数，自动生成命令，复制即可运行；工具输出的分享链接也在这里打开，看完整、可排序的结果页。
 
-```
-$ vps2cloud --top 6
-VPS2Cloud 0.2.0 · TCP 握手 · 10 次采样 · IPv4 · 2026-10-29 04:09 UTC
-出口 Nuremberg, DE · netcup GmbH (AS197540)
-
-#  厂商          区域            城市         中位数  最小  P90  抖动  丢包  档位
-1  Hetzner       nbg1            Nuremberg       0.7   0.6  0.9  ±0.2    0%  T0
-2  Hetzner       fsn1            Falkenstein     3.0   2.8  3.1  ±0.1    0%  T0
-3  Naver Cloud   de              Frankfurt       3.8   3.6  3.9  ±0.1    0%  T0
-4  Vultr         fra             Frankfurt       3.8   3.7  4.0  ±0.2    0%  T0
-5  DigitalOcean  fra1            Frankfurt       3.9   3.8  4.1  ±0.1    0%  T0
-6  Oracle Cloud  eu-frankfurt-1  Frankfurt       4.1   3.9  4.2  ±0.1    0%  T0
-… 还有 355 个（--top 0 显示全部）
-
-361 / 361 个区域有响应，用时 1m13s
-查看和分享： https://s.1ms.dog/9eeaap
-```
+<p align="center"><img src="docs/demo.zh-CN.svg" alt="vps2cloud 在纽伦堡的服务器上测 Hetzner 和 AWS 各区域" width="720"></p>
 
 ## 安装
 

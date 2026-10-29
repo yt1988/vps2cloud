@@ -10,23 +10,7 @@ It is the server-side companion of [Me2Cloud](https://m2c.1ms.dog), which runs t
 
 **Website: [v2c.1ms.dog](https://v2c.1ms.dog)**: pick providers, continents, IP version, measurement and samples, and it writes the command for you to copy; share links from the tool open there as a full, sortable result page.
 
-```
-$ vps2cloud --top 6
-VPS2Cloud 0.2.0 · TCP handshake · 10 samples · IPv4 · 2026-10-29 04:09 UTC
-from Nuremberg, DE · netcup GmbH (AS197540)
-
-#  Provider      Region          City         Median  Min  P90  Jitter  Loss  Tier
-1  Hetzner       nbg1            Nuremberg       0.7  0.6  0.9    ±0.2    0%  T0
-2  Hetzner       fsn1            Falkenstein     3.0  2.8  3.1    ±0.1    0%  T0
-3  Naver Cloud   de              Frankfurt       3.8  3.6  3.9    ±0.1    0%  T0
-4  Vultr         fra             Frankfurt       3.8  3.7  4.0    ±0.2    0%  T0
-5  DigitalOcean  fra1            Frankfurt       3.9  3.8  4.1    ±0.1    0%  T0
-6  Oracle Cloud  eu-frankfurt-1  Frankfurt       4.1  3.9  4.2    ±0.1    0%  T0
-… 355 more (--top 0 shows all)
-
-361 of 361 regions answered in 1m13s
-View and share: https://s.1ms.dog/9eeaap
-```
+<p align="center"><img src="docs/demo.svg" alt="vps2cloud measuring Hetzner and AWS regions from a server in Nuremberg" width="720"></p>
 
 ## Install
 
