@@ -8,6 +8,8 @@
 
 它是 [Me2Cloud](https://m2c.1ms.dog) 的服务器版：Me2Cloud 在浏览器里测你家网络到各家云的延迟，两者用的是同一份节点清单。
 
+<p align="center"><a href="https://v2c.1ms.dog"><img src="docs/site.zh-CN.png" alt="v2c.1ms.dog 页面：选厂商、大洲和设置，复制命令" width="800"></a></p>
+
 **网站：[v2c.1ms.dog](https://v2c.1ms.dog)**：在页面上选厂商、大洲、IP 版本、测量方式和采样次数，自动生成命令，复制即可运行；工具输出的分享链接也在这里打开，看完整、可排序的结果页。
 
 <p align="center"><img src="docs/demo.zh-CN.svg" alt="vps2cloud 在纽伦堡的服务器上测 Hetzner 和 AWS 各区域" width="720"></p>

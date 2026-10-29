@@ -8,6 +8,8 @@ One static binary, no dependencies. Run it on a VPS, a router or in CI to see wh
 
 It is the server-side companion of [Me2Cloud](https://m2c.1ms.dog), which runs the same test from your browser, and uses the same endpoint list.
 
+<p align="center"><a href="https://v2c.1ms.dog"><img src="docs/site.png" alt="The v2c.1ms.dog page: choose providers, continents and settings, copy the command" width="800"></a></p>
+
 **Website: [v2c.1ms.dog](https://v2c.1ms.dog)**: pick providers, continents, IP version, measurement and samples, and it writes the command for you to copy; share links from the tool open there as a full, sortable result page.
 
 <p align="center"><img src="docs/demo.svg" alt="vps2cloud measuring Hetzner and AWS regions from a server in Nuremberg" width="720"></p>
