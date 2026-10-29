@@ -53,7 +53,7 @@ Or download a binary from [Releases](https://github.com/yt1988/vps2cloud/release
 Run `vps2cloud` in a terminal with no options and it asks what to test, step by step, in color; Enter keeps each default and 0 goes back a step (0 on the first question exits):
 
 ```
-What to test?            all regions · the 20 nearest · choose providers · choose continents · language
+What to test?            all regions · choose providers · choose continents · language
 IP version?              IPv4 · IPv6 · both in one run (asked when the machine has IPv6)
 How to measure?          TCP handshake · HTTPS · ICMP · all three
 Samples per region?      5 · 10 · 20
@@ -63,7 +63,6 @@ It then prints the options it used, so the same test runs again without the menu
 
 ```sh
 vps2cloud -m tcp                   # every region, TCP handshake, 10 samples (any option skips the menu)
-vps2cloud --near 10                # quick pass, then measure the 10 closest regions properly
 vps2cloud -p aws,gcp -r 'eu-*'     # some providers, European regions
 vps2cloud --continent as --top 10  # Asia, the 10 best
 vps2cloud -m all -p hetzner        # TCP, HTTPS and ICMP side by side

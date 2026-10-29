@@ -47,23 +47,23 @@ func TestWizard(t *testing.T) {
 		want []string
 	}{
 		{"all defaults", []string{"", ipKey, "", ""}, []string{}},
-		{"nearest, https, quick", []string{"2", ipKey, "2", "1"}, []string{"--near", "20", "-m", "https", "-n", "5"}},
-		{"two continents, icmp, precise", []string{"4", "1,2", ipKey, "3", "3"}, []string{"--continent", "as,eu", "-m", "icmp", "-n", "20"}},
+		{"all regions, https, quick", []string{"1", ipKey, "2", "1"}, []string{"-m", "https", "-n", "5"}},
+		{"two continents, icmp, precise", []string{"3", "1,2", ipKey, "3", "3"}, []string{"--continent", "as,eu", "-m", "icmp", "-n", "20"}},
 		{"retry after bad input", []string{"9", "x", "1", ipKey, "4", ""}, []string{"-m", "all"}},
-		{"0 on the mode question goes back", []string{"1", ipKey, "0", ipKey, "2", "", "", ""}, nil}, // filled below
-		{"0 in the provider list goes back", []string{"3", "0", "2", ipKey, "", ""}, []string{"--near", "20"}},
+		{"0 on the mode question goes back", nil, nil}, // filled below
+		{"0 in the provider list goes back", []string{"2", "0", "1", ipKey, "", ""}, []string{}},
 	}
 	for _, c := range cases {
 		want := c.want
 		if c.name == "0 on the mode question goes back" {
 			// with IPv6, 0 on the mode question returns to the IP question (answered "2" = IPv6 only);
-			// without, it returns to the first question (answered "2" = nearest)
+			// without, it returns to the first question (answered "1" = all), and the mode is then HTTPS
 			if v6 {
 				c.keys = []string{"1", "", "0", "2", "", ""}
 				want = []string{"--ip", "6"}
 			} else {
-				c.keys = []string{"1", "0", "2", "", ""}
-				want = []string{"--near", "20"}
+				c.keys = []string{"1", "0", "1", "2", ""}
+				want = []string{"-m", "https"}
 			}
 		}
 		got := wizard(strings.NewReader(keys(v6, c.keys...)), io.Discard, l, false)
@@ -96,7 +96,7 @@ func TestWizardExit(t *testing.T) {
 
 func TestWizardProviders(t *testing.T) {
 	l, _ := parseList(embeddedList)
-	got := wizard(strings.NewReader(keys(hasRoute(6), "3", "1,2", ipKey, "", "")), io.Discard, l, false)
+	got := wizard(strings.NewReader(keys(hasRoute(6), "2", "1,2", ipKey, "", "")), io.Discard, l, false)
 	if len(got) != 2 || got[0] != "-p" || strings.Count(got[1], ",") != 1 {
 		t.Fatalf("got %q", got)
 	}
@@ -135,15 +135,15 @@ func TestWizardLanguage(t *testing.T) {
 	if !strings.Contains(out.String(), "全部") || !strings.Contains(out.String(), "语言 / Language") || !strings.Contains(out.String(), "0) 退出") {
 		t.Errorf("menu not in Chinese with the bilingual language item and exit:\n%s", out.String())
 	}
-	// from the menu: item 5, then 日本語 (4); the menu comes back in Japanese
+	// from the menu: item 4, then 日本語 (4); the menu comes back in Japanese
 	out.Reset()
-	got = wizard(strings.NewReader(keys(v6, "5", "4", "1", ipKey, "", "")), &out, l, false)
+	got = wizard(strings.NewReader(keys(v6, "4", "4", "1", ipKey, "", "")), &out, l, false)
 	if got == nil || lang != "ja" || loadConfig().Lang != "ja" || !strings.Contains(out.String(), "言語 / Language") {
 		t.Fatalf("menu change: got %q, lang %s, saved %q", got, lang, loadConfig().Lang)
 	}
 	// 0 in the language list goes back without changing it
 	out.Reset()
-	got = wizard(strings.NewReader(keys(v6, "5", "0", "1", ipKey, "", "")), &out, l, false)
+	got = wizard(strings.NewReader(keys(v6, "4", "0", "1", ipKey, "", "")), &out, l, false)
 	if got == nil || lang != "ja" {
 		t.Fatalf("back from the language list: got %q, lang %s", got, lang)
 	}

@@ -53,7 +53,7 @@ curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.
 在终端里不带参数运行 `vps2cloud`，它会一步步问你要测什么（带配色），直接回车就是默认值，输入 0 返回上一步（第一个问题里 0 是退出）：
 
 ```
-测什么？              全部区域 · 最近的 20 个 · 按厂商选 · 按大洲选 · 语言
+测什么？              全部区域 · 按厂商选 · 按大洲选 · 语言
 IP 版本？             IPv4 · IPv6 · 两个一起测（本机有 IPv6 时才会问）
 怎么测？              TCP 握手 · HTTPS · ICMP · 三种都测
 每个区域采样几次？    5 · 10 · 20
@@ -63,7 +63,6 @@ IP 版本？             IPv4 · IPv6 · 两个一起测（本机有 IPv6 时才
 
 ```sh
 vps2cloud -m tcp                   # 全部区域，TCP 握手，10 次采样（带任何参数都会跳过菜单）
-vps2cloud --near 10                # 先快速扫一遍，再完整测最近的 10 个区域
 vps2cloud -p aws,gcp -r 'eu-*'     # 指定厂商，只测欧洲区域
 vps2cloud --continent as --top 10  # 亚洲，只看最快的 10 个
 vps2cloud -m all -p hetzner        # TCP、HTTPS、ICMP 三种并排

@@ -238,27 +238,25 @@ func wizard(in io.Reader, out io.Writer, l *List, askLang bool) []string {
 		switch step {
 		case stepScope:
 			fmt.Fprintf(out, "\n%s\n%s\n", paint(cBold, T("title", version, len(l.Endpoints))), paint(cDim, T("machine", fams)))
-			m.question(T("what"), []string{T("all", len(l.Endpoints)), T("near"), T("prov"), T("cont"), langLabel()}, true)
-			switch m.ask(1, 5) {
+			m.question(T("what"), []string{T("all", len(l.Endpoints)), T("prov"), T("cont"), langLabel()}, true)
+			switch m.ask(1, 4) {
 			case end, back:
 				return nil
 			case 1:
 				scope, step = nil, stepIP
 			case 2:
-				scope, step = []string{"--near", "20"}, stepIP
-			case 3:
 				if sel := m.providers(l); sel == nil {
 					continue // back to this question (or the input ended: the next read returns end)
 				} else {
 					scope, step = sel, stepIP
 				}
-			case 4:
+			case 3:
 				if sel := m.continents(l); sel == nil {
 					continue
 				} else {
 					scope, step = sel, stepIP
 				}
-			case 5:
+			case 4:
 				if m.chooseLang(false) == end {
 					return nil
 				}

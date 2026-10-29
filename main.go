@@ -33,7 +33,6 @@ What to test
   -r, --region LIST       regions by code, id or city, wildcards allowed ("ap-*", "*tokyo*")
       --continent LIST    as, eu, na, sa, oc, me, af
       --country LIST      ISO codes of the region's country (jp,de,us …)
-      --near N            quick pass over everything, then measure only the N closest regions
 
 How to measure
   -m, --mode MODE         tcp (default), https, icmp, or all (comma lists work too: tcp,icmp)
@@ -75,7 +74,7 @@ whether it runs in CI) and is the only one made besides the measurement itself a
 type opts struct {
 	providers, regions, continents, countries             string
 	mode, output, sortBy, preset, endpoints, timeout, gap string
-	n, near, conc, top                                    int
+	n, conc, top                                          int
 	v4, v6, noLink, showIP, noColor, quiet, offline, list bool
 	longLink, toStdout                                    bool
 	file                                                  string
@@ -152,7 +151,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 	str(&o.timeout, "2s", "t", "timeout")
 	str(&o.gap, "250ms", "gap")
 	num(&o.n, 10, "n", "count")
-	num(&o.near, 0, "near")
 	num(&o.conc, 24, "C", "concurrency")
 	num(&o.top, -1, "top")
 	flg(&o.v4, "4")
@@ -303,25 +301,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	if o.near > 0 && o.near < len(eps) {
-		// a short TCP pass over everything picks the closest regions for the full measurement
-		quick := Plan{Probe: Probe{N: 2, Gap: gap, Timeout: timeout, UA: ua}, Modes: []string{"tcp"}, Fams: fams[:1], Concurrency: o.conc, VendorCap: vendorCap}
-		first := quick.Run(ctx, eps, progress(T("scanning")))
-		sortResults(first, quick.Modes, "min")
-		eps = eps[:0]
-		for _, r := range first[:o.near] {
-			if p := r.Primary(quick.Modes); p != nil && p.St.OK > 0 {
-				eps = append(eps, r.E)
-			}
-		}
-		if len(eps) == 0 {
-			if showProgress {
-				fmt.Fprint(stderr, "\r\x1b[K")
-			}
-			fmt.Fprintln(stderr, "vps2cloud: no region answered the quick pass")
-			return 1
-		}
-	}
 	res := pl.Run(ctx, eps, progress(T("measuring")))
 	if showProgress {
 		fmt.Fprint(stderr, "\r\x1b[K")
