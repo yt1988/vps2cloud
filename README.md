@@ -4,7 +4,7 @@
 
 Latency, jitter and loss from the machine you run it on to **361 regions of 17 cloud providers**: AWS, Azure, Google Cloud, Oracle, Alibaba Cloud, Tencent Cloud, Huawei Cloud, Akamai (Linode), DigitalOcean, Vultr, Hetzner, OVHcloud, IBM Cloud, Scaleway, Volcengine, Baidu AI Cloud and Naver Cloud.
 
-One static binary, no dependencies. Run it on a VPS, a router or in CI to see which regions are close to it, then share the result as a link or paste it as a Markdown table. It speaks 10 languages.
+One static binary, no dependencies, about a minute for all 361 regions. Run it on a VPS, a router or in CI to see which regions are close to it, then share the result as a link or paste it as a Markdown table. It speaks 10 languages.
 
 It is the server-side companion of [Me2Cloud](https://m2c.1ms.dog), which runs the same test from your browser, and uses the same endpoint list.
 
@@ -13,6 +13,20 @@ It is the server-side companion of [Me2Cloud](https://m2c.1ms.dog), which runs t
 **Website: [v2c.1ms.dog](https://v2c.1ms.dog)**: pick providers, continents, IP version, measurement and samples, and it writes the command for you to copy; share links from the tool open there as a full, sortable result page.
 
 <p align="center"><img src="docs/demo.svg" alt="vps2cloud measuring Hetzner and AWS regions from a server in Nuremberg" width="720"></p>
+
+## Fast
+
+**Every region of 17 clouds in about a minute.** Measured on a 1 vCPU, 1 GB VPS in Nuremberg (netcup), October 2026:
+
+| Run | Samples | Time |
+|---|---:|---:|
+| All 361 regions, TCP, 10 samples each (the default) | 3,610 | **1 min 14 s** |
+| All 361 regions, 5 samples (`-n 5`) | 1,805 | **35 s** |
+| IPv4 and IPv6 in one run (`--ip both`) | 4,570 | **1 min 29 s** |
+| TCP, HTTPS and ICMP side by side (`-m all -n 5`) | 5,415 | **2 min 40 s** |
+| A handful of regions (`-p hetzner,aws -r …`, 10 regions) | 50 | **4 s** |
+
+It measures many regions at once (24 hosts in parallel by default) and a TCP sample is a single handshake, with no TLS or HTTP on top. Taking the same 3,610 samples one region after another, with the same pause, would take more than 20 minutes. Speed doesn't cost the providers anything extra: each host still gets one sample at a time with a pause in between (see [Gentle on providers](#gentle-on-providers)).
 
 ## Install
 
