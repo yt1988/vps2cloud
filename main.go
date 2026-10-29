@@ -305,7 +305,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if !o.noLink {
-		v.Link = shareLink(res, modes, o.n, fam, v.Origin, start)
+		v.Link = shareLink(res, list, modes, o.n, fam, v.Origin, start)
 	}
 	switch o.output {
 	case "md":

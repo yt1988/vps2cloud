@@ -30,7 +30,7 @@ View and share: https://v2c.1ms.dog/r#s=…
 curl -fsSL https://v2c.1ms.dog/i | sh
 ```
 
-The script picks the build for your OS and CPU, downloads it from this repository's latest release, checks it against the release's `checksums.txt` and installs it as `/usr/local/bin/vps2cloud` (or `~/.local/bin` without root), with `v2c` as a short alias. Read it first if you like: it is [install.sh](install.sh).
+The script picks the build for your OS and CPU, downloads it from this repository's latest release, checks it against the release's `checksums.txt`, installs it as `/usr/local/bin/vps2cloud` (or `~/.local/bin` without root) with `v2c` as a short alias, and starts the test with its menu. Add `sh -s -- --no-run` (or set `V2C_NO_RUN=1`) to install only; without a terminal, as in CI, it only installs. Read it first if you like: it is [install.sh](install.sh).
 
 Run once without installing:
 
@@ -42,8 +42,19 @@ Or download a binary from [Releases](https://github.com/yt1988/vps2cloud/release
 
 ## Usage
 
+Run `vps2cloud` in a terminal with no options and it asks what to test, step by step; Enter keeps each default:
+
+```
+What to test?            all regions · the 20 nearest · choose providers · choose continents
+IP version?              IPv4 · IPv6 · both (asked when the machine has IPv6)
+How to measure?          TCP handshake · HTTPS · ICMP · all three
+Samples per region?      5 · 10 · 20
+```
+
+It then prints the options it used, so the same test runs again without the menu. With options, or when the output is not a terminal, there is no menu:
+
 ```sh
-vps2cloud                          # every region, TCP handshake, 10 samples
+vps2cloud -m tcp                   # every region, TCP handshake, 10 samples (any option skips the menu)
 vps2cloud --near 10                # quick pass, then measure the 10 closest regions properly
 vps2cloud -p aws,gcp -r 'eu-*'     # some providers, European regions
 vps2cloud --continent as --top 10  # Asia, the 10 best
@@ -81,7 +92,7 @@ Besides the measurement itself, a run makes three requests:
 - **The endpoint list** from `v2c.1ms.dog` (falling back to `m2c.1ms.dog`, then to the copy built into the binary). This request is how runs are counted: its User-Agent says `vps2cloud/<version> (<os>/<arch>[; ci])` and nothing else about the machine. `--offline` skips it.
 - **Cloudflare's `/meta` and ident.me** to name the network the test runs from (city, provider, ASN) for the "from" line.
 
-Results are never uploaded. The share link carries them in the URL fragment (`#…`), which browsers do not send to any server; it holds the per-region numbers and the "from" line, never the IP address. `--no-link` leaves it out. The IP is only printed with `--show-ip`.
+Results are never uploaded. The share link carries them in the URL fragment (`#…`), which browsers do not send to any server; it holds the per-region numbers and the "from" line, never the IP address. It is compact (about 2,000 characters for all 361 regions, a few hundred for 20; the format is in [docs/share-format.md](docs/share-format.md)). `--no-link` leaves it out. The IP is only printed with `--show-ip`.
 
 ## Endpoints
 
