@@ -19,5 +19,5 @@ jobs:
       - name: Short run
         run: |
           ./vps2cloud --offline -p aws,hetzner,vultr -n 3 -m tcp,https --top 10
-          ./vps2cloud --offline -p aws -r 'eu-*' -n 2 -o json > out.json
+          ./vps2cloud --offline -p aws -r 'eu-*' -n 2 -o json --file out.json
           jq -e '.regions | length > 0' out.json
