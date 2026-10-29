@@ -1,23 +1,25 @@
 # VPS2Cloud
 
+**English** · [简体中文](README.zh-CN.md)
+
 Latency, jitter and loss from the machine you run it on to **361 regions of 17 cloud providers**: AWS, Azure, Google Cloud, Oracle, Alibaba Cloud, Tencent Cloud, Huawei Cloud, Akamai (Linode), DigitalOcean, Vultr, Hetzner, OVHcloud, IBM Cloud, Scaleway, Volcengine, Baidu AI Cloud and Naver Cloud.
 
-One static binary, no dependencies. Run it on a VPS, a router or in CI to see which regions are close to it, then share the result as a link or paste it as a Markdown table.
+One static binary, no dependencies. Run it on a VPS, a router or in CI to see which regions are close to it, then share the result as a link or paste it as a Markdown table. It speaks 10 languages.
 
 It is the server-side companion of [Me2Cloud](https://m2c.1ms.dog), which runs the same test from your browser, and uses the same endpoint list.
 
 ```
 $ vps2cloud --top 6
-VPS2Cloud 0.1.0 · TCP handshake · 10 samples · IPv4 · 2026-10-29 04:09 UTC
+VPS2Cloud 0.2.0 · TCP handshake · 10 samples · IPv4 · 2026-10-29 04:09 UTC
 from Nuremberg, DE · netcup GmbH (AS197540)
 
-#  Provider      Region  City         Median  Min  P90  Jitter  Loss  Tier
-1  Hetzner       nbg1    Nuremberg       0.7  0.6  0.9    ±0.2    0%  T0
-2  Hetzner       fsn1    Falkenstein     3.0  2.8  3.1    ±0.1    0%  T0
-3  Naver Cloud   de      Frankfurt       3.8  3.6  3.9    ±0.1    0%  T0
-4  Vultr         fra     Frankfurt       3.8  3.7  4.0    ±0.2    0%  T0
-5  DigitalOcean  fra1    Frankfurt       3.9  3.8  4.1    ±0.1    0%  T0
-6  Oracle Cloud  eu-frankfurt-1  Frankfurt  4.1  3.9  4.2  ±0.1  0%  T0
+#  Provider      Region          City         Median  Min  P90  Jitter  Loss  Tier
+1  Hetzner       nbg1            Nuremberg       0.7  0.6  0.9    ±0.2    0%  T0
+2  Hetzner       fsn1            Falkenstein     3.0  2.8  3.1    ±0.1    0%  T0
+3  Naver Cloud   de              Frankfurt       3.8  3.6  3.9    ±0.1    0%  T0
+4  Vultr         fra             Frankfurt       3.8  3.7  4.0    ±0.2    0%  T0
+5  DigitalOcean  fra1            Frankfurt       3.9  3.8  4.1    ±0.1    0%  T0
+6  Oracle Cloud  eu-frankfurt-1  Frankfurt       4.1  3.9  4.2    ±0.1    0%  T0
 … 355 more (--top 0 shows all)
 
 361 of 361 regions answered in 1m13s
@@ -27,7 +29,7 @@ View and share: https://v2c.1ms.dog/r#s=…
 ## Install
 
 ```sh
-curl -fsSL https://v2c.1ms.dog/i | sh
+curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.sh | sh
 ```
 
 The script picks the build for your OS and CPU, downloads it from this repository's latest release, checks it against the release's `checksums.txt`, installs it as `/usr/local/bin/vps2cloud` (or `~/.local/bin` without root) with `v2c` as a short alias, and starts the test with its menu. Add `sh -s -- --no-run` (or set `V2C_NO_RUN=1`) to install only; without a terminal, as in CI, it only installs. Read it first if you like: it is [install.sh](install.sh).
@@ -35,7 +37,7 @@ The script picks the build for your OS and CPU, downloads it from this repositor
 Run once without installing:
 
 ```sh
-curl -fsSL https://v2c.1ms.dog/i | sh -s -- run --near 10
+curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.sh | sh -s -- run
 ```
 
 Or download a binary from [Releases](https://github.com/yt1988/vps2cloud/releases): Linux (amd64, arm64, armv7, 386, riscv64, mips, mipsle for OpenWrt), macOS, FreeBSD and Windows.
@@ -45,7 +47,7 @@ Or download a binary from [Releases](https://github.com/yt1988/vps2cloud/release
 Run `vps2cloud` in a terminal with no options and it asks what to test, step by step; Enter keeps each default:
 
 ```
-What to test?            all regions · the 20 nearest · choose providers · choose continents
+What to test?            all regions · the 20 nearest · choose providers · choose continents · language
 IP version?              IPv4 · IPv6 · both (asked when the machine has IPv6)
 How to measure?          TCP handshake · HTTPS · ICMP · all three
 Samples per region?      5 · 10 · 20
@@ -68,6 +70,10 @@ vps2cloud --list                   # providers; --list -p aws lists AWS's region
 ```
 
 `vps2cloud --help` lists every option.
+
+### Language
+
+The first time the menu runs it asks for a language (English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch, Português, Русский) and remembers it in `~/.config/vps2cloud/config.json`. Change it later with the menu's last item, which is labelled in the current language and in English (for example `语言 / Language`), so you can always find your way back. For one run, use `--lang ja` or `V2C_LANG=ja`. The menu, the table and the Markdown follow the language; JSON and CSV keep English keys.
 
 ### What it measures
 
@@ -112,6 +118,7 @@ gh attestation verify vps2cloud-linux-amd64 --repo yt1988/vps2cloud
 
 ```sh
 go build -o vps2cloud .
+go test ./...
 ```
 
 Go 1.27 or later. `golang.org/x/net` (for ICMP) is the only dependency.

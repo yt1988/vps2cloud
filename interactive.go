@@ -9,13 +9,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
-// The menu runs when vps2cloud starts in a terminal with no options. It asks what to test, the IP family, the
-// measurement and the sample count (Enter keeps each default), then runs with the options it built, which it also
-// prints so the same test can be run again without the menu.
+// The menu runs when vps2cloud starts in a terminal with no options. On the first run it asks for a language and saves
+// it. Then it asks what to test (or offers to change the language), the IP family, the measurement and the sample
+// count (Enter keeps each default), and runs with the options it built, which it also prints so the same test can be
+// run again without the menu.
 
-var continentNames = map[string]string{"as": "Asia", "eu": "Europe", "na": "North America", "sa": "South America", "oc": "Oceania", "me": "Middle East", "af": "Africa"}
 var continentOrder = []string{"as", "eu", "na", "sa", "oc", "me", "af"}
 
 type menu struct {
@@ -37,7 +38,7 @@ func (m menu) ask(prompt string, def int, max int) int {
 		if n, e := strconv.Atoi(line); e == nil && n >= 1 && n <= max {
 			return n
 		}
-		fmt.Fprintf(m.out, "  Enter a number from 1 to %d.\n", max)
+		fmt.Fprintln(m.out, "  "+T("num", max))
 	}
 }
 
@@ -52,7 +53,7 @@ func (m menu) pick(prompt string, max int) []int {
 		}
 		var out []int
 		ok := line != ""
-		for _, part := range strings.FieldsFunc(line, func(r rune) bool { return r == ',' || r == ' ' }) {
+		for _, part := range strings.FieldsFunc(line, func(r rune) bool { return r == ',' || r == ' ' || r == '，' }) {
 			a, b, isRange := strings.Cut(part, "-")
 			lo, e1 := strconv.Atoi(a)
 			hi := lo
@@ -71,14 +72,14 @@ func (m menu) pick(prompt string, max int) []int {
 		if ok && len(out) > 0 {
 			return out
 		}
-		fmt.Fprintf(m.out, "  Enter one or more numbers from 1 to %d, like 1,3 or 2-5.\n", max)
+		fmt.Fprintln(m.out, "  "+T("pickErr", max))
 	}
 }
 
 func columns(w io.Writer, items []string) {
 	width := 0
 	for _, s := range items {
-		if n := len([]rune(s)); n > width {
+		if n := textWidth(s); n > width {
 			width = n
 		}
 	}
@@ -87,11 +88,40 @@ func columns(w io.Writer, items []string) {
 		per = 2
 	}
 	for i, s := range items {
-		fmt.Fprintf(w, "  %-*s", width+2, s)
+		fmt.Fprint(w, "  "+padText(s, width+2, false))
 		if (i+1)%per == 0 || i == len(items)-1 {
 			fmt.Fprintln(w)
 		}
 	}
+}
+
+// textWidth counts terminal columns: CJK and other wide characters take two.
+func textWidth(s string) int {
+	n := 0
+	for _, r := range stripANSI(s) {
+		switch {
+		case r == 0x200B || unicode.Is(unicode.Mn, r):
+		case r >= 0x1100 && (r <= 0x115F || r == 0x2329 || r == 0x232A ||
+			(r >= 0x2E80 && r <= 0xA4CF && r != 0x303F) || (r >= 0xAC00 && r <= 0xD7A3) ||
+			(r >= 0xF900 && r <= 0xFAFF) || (r >= 0xFE30 && r <= 0xFE4F) || (r >= 0xFF00 && r <= 0xFF60) ||
+			(r >= 0xFFE0 && r <= 0xFFE6) || (r >= 0x1F300 && r <= 0x1FAFF) || (r >= 0x20000 && r <= 0x3FFFD)):
+			n += 2
+		default:
+			n++
+		}
+	}
+	return n
+}
+
+func padText(s string, w int, right bool) string {
+	n := textWidth(s)
+	if n >= w {
+		return s
+	}
+	if right {
+		return strings.Repeat(" ", w-n) + s
+	}
+	return s + strings.Repeat(" ", w-n)
 }
 
 // hasRoute tells whether this machine has a route for an IP family. Connecting a UDP socket sends nothing.
@@ -109,87 +139,139 @@ func hasRoute(fam int) bool {
 	return fam == 4 || (ip.IsGlobalUnicast() && !ip.IsPrivate())
 }
 
-// wizard returns one set of options per run ("both" families is two runs), or nil when the input ends.
-func wizard(in io.Reader, out io.Writer, l *List) [][]string {
+// langLabel names the language setting in the current language and in English, so it can be found again from a
+// language one cannot read.
+func langLabel() string {
+	if lang == "en" {
+		return "Language"
+	}
+	return T("langItem") + " / Language"
+}
+
+// chooseLang lists the languages (English first, Chinese second), sets the one picked and saves it.
+func (m menu) chooseLang(first bool) bool {
+	fmt.Fprintln(m.out)
+	if first {
+		fmt.Fprintln(m.out, "Language / 语言")
+	} else {
+		fmt.Fprintln(m.out, langLabel())
+	}
+	def := 1
+	var items []string
+	for i, l := range languages {
+		items = append(items, fmt.Sprintf("%2d) %s", i+1, l.Name))
+		if l.Code == lang {
+			def = i + 1
+		}
+	}
+	columns(m.out, items)
+	n := m.ask(T("choice"), def, len(languages))
+	if n < 0 {
+		return false
+	}
+	lang = languages[n-1].Code
+	c := loadConfig()
+	c.Lang = lang
+	if err := saveConfig(c); err == nil {
+		fmt.Fprintln(m.out, T("langSaved", languages[n-1].Name))
+	}
+	return true
+}
+
+// wizard returns one set of options per run ("both" families is two runs), or nil when the input ends. askLang is
+// set on the first run, before any language has been chosen.
+func wizard(in io.Reader, out io.Writer, l *List, askLang bool) [][]string {
 	m := menu{bufio.NewReader(in), out}
-	fmt.Fprintf(out, "\nVPS2Cloud %s · latency from this machine to %d cloud regions\n", version, len(l.Endpoints))
+	if askLang && !m.chooseLang(true) {
+		return nil
+	}
 	v6 := hasRoute(6)
 	fams := "IPv4"
 	if v6 {
 		fams = "IPv4 + IPv6"
 	}
-	fmt.Fprintf(out, "This machine: %s · Enter keeps the [default] · Ctrl-C quits\n\n", fams)
 
 	var args []string
-	fmt.Fprintln(out, "What to test?")
-	fmt.Fprintf(out, "  1) All %d regions\n", len(l.Endpoints))
-	fmt.Fprintln(out, "  2) The 20 nearest regions (a quick scan finds them)")
-	fmt.Fprintln(out, "  3) Choose providers")
-	fmt.Fprintln(out, "  4) Choose continents")
-	switch m.ask("Choice", 1, 4) {
-	case -1:
-		return nil
-	case 2:
-		args = append(args, "--near", "20")
-	case 3:
-		ids := make([]string, 0, len(l.Vendors))
-		for id := range l.Vendors {
-			ids = append(ids, id)
-		}
-		count := map[string]int{}
-		for _, e := range l.Endpoints {
-			count[e.Vendor]++
-		}
-		sort.Slice(ids, func(i, j int) bool {
-			return count[ids[i]] > count[ids[j]] || count[ids[i]] == count[ids[j]] && ids[i] < ids[j]
-		})
-		var items []string
-		for i, id := range ids {
-			items = append(items, fmt.Sprintf("%2d) %s (%d)", i+1, l.Vendors[id].Name, count[id]))
-		}
-		fmt.Fprintln(out)
-		columns(out, items)
-		sel := m.pick("Providers (e.g. 1,3 or 2-5)", len(ids))
-		if sel == nil {
+	for done := false; !done; {
+		fmt.Fprintf(out, "\n%s\n", T("title", version, len(l.Endpoints)))
+		fmt.Fprintf(out, "%s\n\n", T("machine", fams))
+		fmt.Fprintln(out, T("what"))
+		fmt.Fprintf(out, "  1) %s\n", T("all", len(l.Endpoints)))
+		fmt.Fprintf(out, "  2) %s\n", T("near"))
+		fmt.Fprintf(out, "  3) %s\n", T("prov"))
+		fmt.Fprintf(out, "  4) %s\n", T("cont"))
+		fmt.Fprintf(out, "  5) %s\n", langLabel())
+		done = true
+		switch m.ask(T("choice"), 1, 5) {
+		case -1:
 			return nil
-		}
-		var names []string
-		for _, i := range sel {
-			names = append(names, ids[i-1])
-		}
-		args = append(args, "-p", strings.Join(names, ","))
-	case 4:
-		count := map[string]int{}
-		for _, e := range l.Endpoints {
-			count[e.Continent]++
-		}
-		var cs, items []string
-		for _, c := range continentOrder {
-			if count[c] > 0 {
-				cs = append(cs, c)
-				items = append(items, fmt.Sprintf("%d) %s (%d)", len(cs), continentNames[c], count[c]))
+		case 2:
+			args = append(args, "--near", "20")
+		case 3:
+			ids := make([]string, 0, len(l.Vendors))
+			for id := range l.Vendors {
+				ids = append(ids, id)
 			}
+			count := map[string]int{}
+			for _, e := range l.Endpoints {
+				count[e.Vendor]++
+			}
+			sort.Slice(ids, func(i, j int) bool {
+				return count[ids[i]] > count[ids[j]] || count[ids[i]] == count[ids[j]] && ids[i] < ids[j]
+			})
+			var items []string
+			for i, id := range ids {
+				items = append(items, fmt.Sprintf("%2d) %s (%d)", i+1, l.Vendors[id].Name, count[id]))
+			}
+			fmt.Fprintln(out)
+			columns(out, items)
+			sel := m.pick(T("pickProv"), len(ids))
+			if sel == nil {
+				return nil
+			}
+			var names []string
+			for _, i := range sel {
+				names = append(names, ids[i-1])
+			}
+			args = append(args, "-p", strings.Join(names, ","))
+		case 4:
+			count := map[string]int{}
+			for _, e := range l.Endpoints {
+				count[e.Continent]++
+			}
+			var cs, items []string
+			for _, c := range continentOrder {
+				if count[c] > 0 {
+					cs = append(cs, c)
+					items = append(items, fmt.Sprintf("%d) %s (%d)", len(cs), continentName(c), count[c]))
+				}
+			}
+			fmt.Fprintln(out)
+			columns(out, items)
+			sel := m.pick(T("pickCont"), len(cs))
+			if sel == nil {
+				return nil
+			}
+			var names []string
+			for _, i := range sel {
+				names = append(names, cs[i-1])
+			}
+			args = append(args, "--continent", strings.Join(names, ","))
+		case 5:
+			if !m.chooseLang(false) {
+				return nil
+			}
+			done = false // back to the first question, now in the new language
 		}
-		fmt.Fprintln(out)
-		columns(out, items)
-		sel := m.pick("Continents (e.g. 1,2)", len(cs))
-		if sel == nil {
-			return nil
-		}
-		var names []string
-		for _, i := range sel {
-			names = append(names, cs[i-1])
-		}
-		args = append(args, "--continent", strings.Join(names, ","))
 	}
 
 	famRuns := [][]string{nil}
 	if v6 {
-		fmt.Fprintln(out, "\nIP version?")
-		fmt.Fprintln(out, "  1) IPv4")
-		fmt.Fprintln(out, "  2) IPv6 (regions without IPv6 are skipped)")
-		fmt.Fprintln(out, "  3) Both, one after the other")
-		switch m.ask("Choice", 1, 3) {
+		fmt.Fprintln(out, "\n"+T("ip"))
+		fmt.Fprintln(out, "  1) "+T("v4"))
+		fmt.Fprintln(out, "  2) "+T("v6"))
+		fmt.Fprintln(out, "  3) "+T("both"))
+		switch m.ask(T("choice"), 1, 3) {
 		case -1:
 			return nil
 		case 2:
@@ -199,12 +281,12 @@ func wizard(in io.Reader, out io.Writer, l *List) [][]string {
 		}
 	}
 
-	fmt.Fprintln(out, "\nHow to measure?")
-	fmt.Fprintln(out, "  1) TCP handshake: the network round trip alone")
-	fmt.Fprintln(out, "  2) HTTPS: a request on an open connection, as an app sees it (slower to run)")
-	fmt.Fprintln(out, "  3) ICMP ping (needs root)")
-	fmt.Fprintln(out, "  4) All three side by side")
-	switch m.ask("Choice", 1, 4) {
+	fmt.Fprintln(out, "\n"+T("how"))
+	fmt.Fprintln(out, "  1) "+T("tcp"))
+	fmt.Fprintln(out, "  2) "+T("https"))
+	fmt.Fprintln(out, "  3) "+T("icmp"))
+	fmt.Fprintln(out, "  4) "+T("allModes"))
+	switch m.ask(T("choice"), 1, 4) {
 	case -1:
 		return nil
 	case 2:
@@ -215,11 +297,11 @@ func wizard(in io.Reader, out io.Writer, l *List) [][]string {
 		args = append(args, "-m", "all")
 	}
 
-	fmt.Fprintln(out, "\nSamples per region?")
-	fmt.Fprintln(out, "  1) Quick, 5")
-	fmt.Fprintln(out, "  2) Standard, 10")
-	fmt.Fprintln(out, "  3) Precise, 20")
-	switch m.ask("Choice", 2, 3) {
+	fmt.Fprintln(out, "\n"+T("samples"))
+	fmt.Fprintln(out, "  1) "+T("quick"))
+	fmt.Fprintln(out, "  2) "+T("std"))
+	fmt.Fprintln(out, "  3) "+T("precise"))
+	switch m.ask(T("choice"), 2, 3) {
 	case -1:
 		return nil
 	case 1:

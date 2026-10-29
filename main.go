@@ -56,6 +56,8 @@ Endpoint list
       --offline           use the list built into this binary, no download
       --endpoints FILE    use a local list (Me2Cloud's endpoints.json format)
       --list              show providers and regions, then exit
+      --lang CODE         language of the output: en, zh-CN, zh-TW, ja, ko, es, fr, de, pt, ru
+                          (the menu asks once and remembers it; V2C_LANG works too)
   -v, --version
 
 Each run fetches the latest endpoint list from v2c.1ms.dog. That request is counted (tool version, OS and CPU type,
@@ -70,11 +72,19 @@ type opts struct {
 	v4, v6, noLink, showIP, noColor, quiet, offline, list bool
 	maxMS                                                 float64
 	ver                                                   bool
+	lang                                                  string
 }
 
 func main() {
 	// net/http logs HTTP/2 frames it does not handle (ORIGIN frames from Cloudflare and Google); none matter here
 	log.SetOutput(io.Discard)
+	// language: --lang (read in run), then V2C_LANG, then the saved choice, then English
+	askLang := true
+	if l := knownLang(os.Getenv("V2C_LANG")); l != "" {
+		lang, askLang = l, false
+	} else if l := knownLang(loadConfig().Lang); l != "" {
+		lang, askLang = l, false
+	}
 	args := os.Args[1:]
 	if len(args) > 0 || !isTTY(os.Stdin) || !isTTY(os.Stdout) {
 		os.Exit(run(args, os.Stdout, os.Stderr))
@@ -85,7 +95,7 @@ func main() {
 		os.Exit(run(args, os.Stdout, os.Stderr))
 	}
 	preloaded = l
-	runs := wizard(os.Stdin, os.Stdout, l)
+	runs := wizard(os.Stdin, os.Stdout, l, askLang)
 	if runs == nil {
 		os.Exit(130)
 	}
@@ -98,7 +108,7 @@ func main() {
 			code = c
 		}
 	}
-	fmt.Fprintln(os.Stdout, "\nTo run the same test without the menu:")
+	fmt.Fprintln(os.Stdout, "\n"+T("again"))
 	for _, a := range runs {
 		fmt.Fprintln(os.Stdout, "  "+commandLine(a))
 	}
@@ -137,6 +147,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	str(&o.sortBy, "median", "sort")
 	str(&o.preset, "", "preset")
 	str(&o.endpoints, "", "endpoints")
+	str(&o.lang, "", "lang")
 	str(&o.timeout, "2s", "t", "timeout")
 	str(&o.gap, "250ms", "gap")
 	num(&o.n, 10, "n", "count")
@@ -162,6 +173,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if fs.NArg() > 0 {
 		fmt.Fprintf(stderr, "unexpected argument %q (see --help)\n", fs.Arg(0))
 		return 2
+	}
+	if o.lang != "" {
+		l := knownLang(o.lang)
+		if l == "" {
+			fmt.Fprintf(stderr, "vps2cloud: unknown language %q (en, zh-CN, zh-TW, ja, ko, es, fr, de, pt, ru)\n", o.lang)
+			return 2
+		}
+		lang = l
 	}
 	if o.ver {
 		fmt.Fprintf(stdout, "vps2cloud %s %s/%s\n", version, runtime.GOOS, runtime.GOARCH)
@@ -222,7 +241,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return fail("%v", err)
 	}
 	if len(eps) == 0 {
-		return fail("no region matches those filters")
+		return fail("%s", T("noMatch"))
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -238,7 +257,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		} else if len(modes) == 1 {
 			return fail("ICMP needs root, CAP_NET_RAW (setcap cap_net_raw+ep vps2cloud) or a ping_group_range that covers you: %v", err)
 		} else if !o.quiet {
-			fmt.Fprintln(stderr, "vps2cloud: ICMP not available here (needs root or CAP_NET_RAW); measuring the other modes")
+			fmt.Fprintln(stderr, "vps2cloud: "+T("icmpSkip"))
 		}
 	}
 
@@ -257,7 +276,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if o.near > 0 && o.near < len(eps) {
 		// a short TCP pass over everything picks the closest regions for the full measurement
 		quick := Plan{Probe: Probe{N: 2, Gap: gap, Timeout: timeout, UA: ua}, Modes: []string{"tcp"}, Fam: fam, Concurrency: o.conc, VendorCap: vendorCap}
-		first := quick.Run(ctx, eps, progress("scanning"))
+		first := quick.Run(ctx, eps, progress(T("scanning")))
 		sortResults(first, quick.Modes, "min")
 		eps = eps[:0]
 		for _, r := range first[:o.near] {
@@ -273,7 +292,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	}
-	res := pl.Run(ctx, eps, progress("measuring"))
+	res := pl.Run(ctx, eps, progress(T("measuring")))
 	if showProgress {
 		fmt.Fprint(stderr, "\r\x1b[K")
 	}

@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 // Tiers by median, the same bounds as Me2Cloud: T0 ≤ 30 ms, T1 ≤ 80, T2 ≤ 150, T3 ≤ 250, T4 above.
@@ -83,20 +82,18 @@ func sortResults(res []*Result, modes []string, by string) {
 	})
 }
 
-var modeName = map[string]string{"tcp": "TCP handshake", "https": "HTTPS (reused connection)", "icmp": "ICMP echo"}
-
 func (v View) headline() string {
 	var m []string
 	for _, x := range v.Modes {
-		m = append(m, modeName[x])
+		m = append(m, T("m_"+x))
 	}
-	return fmt.Sprintf("%s · %d samples · IPv%d · %s", strings.Join(m, " + "), v.N, v.Fam, v.At.UTC().Format("2006-01-02 15:04 UTC"))
+	return fmt.Sprintf("%s · %s · IPv%d · %s", strings.Join(m, " + "), T("nSamples", v.N), v.Fam, v.At.UTC().Format("2006-01-02 15:04 UTC"))
 }
 
 func (v View) from() string {
 	o := v.Origin
 	if o == nil {
-		return "unknown network"
+		return T("unknownNet")
 	}
 	var parts []string
 	if loc := strings.Trim(o.City+", "+o.Country, ", "); loc != "" {
@@ -147,17 +144,6 @@ func (v View) c(code, s string) string {
 	return code + s + cReset
 }
 
-func pad(s string, w int, right bool) string {
-	n := utf8.RuneCountInString(stripANSI(s))
-	if n >= w {
-		return s
-	}
-	if right {
-		return strings.Repeat(" ", w-n) + s
-	}
-	return s + strings.Repeat(" ", w-n)
-}
-
 func stripANSI(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
@@ -175,18 +161,20 @@ func stripANSI(s string) string {
 // Table: one row per region, ranked; with several modes each gets a median column. Then the best region per provider.
 func (v View) Table(w io.Writer) {
 	fmt.Fprintf(w, "%s %s\n", v.c(cBold, "VPS2Cloud "+version), v.c(cDim, "· "+v.headline()))
-	fmt.Fprintf(w, "%s %s\n\n", v.c(cDim, "from"), v.from())
-	head := []string{"#", "Provider", "Region", "City", "Median", "Min", "P90", "Jitter", "Loss", "Tier"}
+	fmt.Fprintf(w, "%s %s\n\n", v.c(cDim, T("from")), v.from())
+	head := []string{"#", T("h_provider"), T("h_region"), T("h_city"), T("h_median"), T("h_min"), T("h_p90"), T("h_jitter"), T("h_loss"), T("h_tier")}
 	multi := len(v.Modes) > 1
 	if multi {
-		head = []string{"#", "Provider", "Region", "City"}
+		head = []string{"#", T("h_provider"), T("h_region"), T("h_city")}
 		for _, m := range v.Modes {
 			head = append(head, strings.ToUpper(m))
 		}
-		head = append(head, "Jitter", "Loss", "Tier")
+		head = append(head, T("h_jitter"), T("h_loss"), T("h_tier"))
 	}
+	textTail := 1 // tier (and fit) are text at the end; the columns from the 5th up to them are numbers
 	if v.Preset != "" {
-		head = append(head, "Fit")
+		head = append(head, T("h_fit"))
+		textTail = 2
 	}
 	var rows [][]string
 	for i, r := range v.shown() {
@@ -233,20 +221,20 @@ func (v View) Table(w io.Writer) {
 	}
 	widths := make([]int, len(head))
 	for i, h := range head {
-		widths[i] = len(h)
+		widths[i] = textWidth(h)
 	}
 	for _, row := range rows {
 		for i, cl := range row {
-			if n := utf8.RuneCountInString(stripANSI(cl)); n > widths[i] {
+			if n := textWidth(cl); n > widths[i] {
 				widths[i] = n
 			}
 		}
 	}
-	numeric := func(i int) bool { return i == 0 || (i >= 4 && head[i] != "Tier" && head[i] != "Fit") }
+	numeric := func(i int) bool { return i == 0 || (i >= 4 && i < len(head)-textTail) }
 	line := func(cells []string, dim bool) {
 		var parts []string
 		for i, cl := range cells {
-			parts = append(parts, pad(cl, widths[i], numeric(i)))
+			parts = append(parts, padText(cl, widths[i], numeric(i)))
 		}
 		s := strings.TrimRight(strings.Join(parts, "  "), " ")
 		if dim {
@@ -259,7 +247,7 @@ func (v View) Table(w io.Writer) {
 		line(row, false)
 	}
 	if v.Top > 0 && v.Top < len(v.Res) {
-		fmt.Fprintln(w, v.c(cDim, fmt.Sprintf("… %d more (--top 0 shows all)", len(v.Res)-v.Top)))
+		fmt.Fprintln(w, v.c(cDim, T("more", len(v.Res)-v.Top)))
 	}
 	// the best region of each provider, in rank order
 	seen := map[string]bool{}
@@ -273,7 +261,7 @@ func (v View) Table(w io.Writer) {
 		best = append(best, fmt.Sprintf("%s %s %s ms", v.vendorName(r.E.Vendor), r.E.Region, f1(p.St.Med)))
 	}
 	if len(seen) > 1 {
-		fmt.Fprintf(w, "\n%s\n", v.c(cBold, "Best per provider"))
+		fmt.Fprintf(w, "\n%s\n", v.c(cBold, T("best")))
 		for _, b := range best {
 			fmt.Fprintln(w, "  "+b)
 		}
@@ -286,24 +274,25 @@ func (v View) Table(w io.Writer) {
 	}
 	noV6 := ""
 	if v.NoV6 > 0 {
-		noV6 = fmt.Sprintf(" (%d more have no IPv6 address)", v.NoV6)
+		noV6 = T("noV6", v.NoV6)
 	}
-	fmt.Fprintf(w, "\n%s\n", v.c(cDim, fmt.Sprintf("%d of %d regions answered%s in %s · endpoints: %s", ok, len(v.Res), noV6, v.Took.Round(time.Second), v.List.Source)))
+	fmt.Fprintf(w, "\n%s\n", v.c(cDim, T("summary", ok, len(v.Res), noV6, v.Took.Round(time.Second), v.List.Source)))
 	if v.Link != "" {
-		fmt.Fprintf(w, "%s %s\n", v.c(cBold, "View and share:"), v.Link)
+		fmt.Fprintf(w, "%s %s\n", v.c(cBold, T("link")), v.Link)
 	}
 }
 
 // Markdown: a table to paste into a forum post or an issue, with the share link for the full result.
 func (v View) Markdown(w io.Writer) {
-	fmt.Fprintf(w, "**VPS2Cloud** from %s · %s\n\n", v.from(), v.headline())
-	cols := "| # | Provider | Region | City | Median | Jitter | Loss |"
+	fmt.Fprintf(w, "**VPS2Cloud** %s %s · %s\n\n", T("from"), v.from(), v.headline())
+	first := fmt.Sprintf("| # | %s | %s | %s |", T("h_provider"), T("h_region"), T("h_city"))
+	cols := first + fmt.Sprintf(" %s | %s | %s |", T("h_median"), T("h_jitter"), T("h_loss"))
 	if len(v.Modes) > 1 {
-		cols = "| # | Provider | Region | City |"
+		cols = first
 		for _, m := range v.Modes {
 			cols += " " + strings.ToUpper(m) + " |"
 		}
-		cols += " Jitter | Loss |"
+		cols += fmt.Sprintf(" %s | %s |", T("h_jitter"), T("h_loss"))
 	}
 	fmt.Fprintln(w, cols)
 	sep := "|---:|---|---|---|"
@@ -332,10 +321,10 @@ func (v View) Markdown(w io.Writer) {
 		fmt.Fprintln(w, row)
 	}
 	if v.Top > 0 && v.Top < len(v.Res) {
-		fmt.Fprintf(w, "\n_Top %d of %d regions._", v.Top, len(v.Res))
+		fmt.Fprintf(w, "\n_%s_", T("topOf", v.Top, len(v.Res)))
 	}
 	if v.Link != "" {
-		fmt.Fprintf(w, " [Full result](%s)", v.Link)
+		fmt.Fprintf(w, " [%s](%s)", T("fullResult"), v.Link)
 	}
 	fmt.Fprintln(w)
 }
