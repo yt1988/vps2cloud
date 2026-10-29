@@ -224,12 +224,13 @@ func wizard(in io.Reader, out io.Writer, l *List, askLang bool) []string {
 	}
 
 	// the answers, by step; a step that goes back clears its own answer
-	var scope, ip, mode, samples []string
+	var scope, ip, mode, samples, save []string
 	const (
 		stepScope = iota
 		stepIP
 		stepMode
 		stepSamples
+		stepSave
 		stepDone
 	)
 	step := stepScope
@@ -306,17 +307,33 @@ func wizard(in io.Reader, out io.Writer, l *List, askLang bool) []string {
 			case back:
 				step = stepMode
 			case 1:
-				samples, step = []string{"-n", "5"}, stepDone
+				samples, step = []string{"-n", "5"}, stepSave
 			case 2:
-				samples, step = nil, stepDone
+				samples, step = nil, stepSave
 			case 3:
-				samples, step = []string{"-n", "20"}, stepDone
+				samples, step = []string{"-n", "20"}, stepSave
+			}
+		case stepSave:
+			m.question(T("saveQ"), []string{T("saveNo"), "Markdown (.md)", "JSON (.json)", "CSV (.csv)"}, false)
+			switch m.ask(1, 4) {
+			case end:
+				return nil
+			case back:
+				step = stepSamples
+			case 1:
+				save, step = nil, stepDone
+			case 2:
+				save, step = []string{"-o", "md"}, stepDone
+			case 3:
+				save, step = []string{"-o", "json"}, stepDone
+			case 4:
+				save, step = []string{"-o", "csv"}, stepDone
 			}
 		}
 	}
 	fmt.Fprintln(out)
 	args := []string{}
-	for _, part := range [][]string{scope, ip, mode, samples} {
+	for _, part := range [][]string{scope, ip, mode, samples, save} {
 		args = append(args, part...)
 	}
 	return args

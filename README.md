@@ -34,6 +34,12 @@ curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.
 
 The script picks the build for your OS and CPU, downloads it from this repository's latest release, checks it against the release's `checksums.txt`, installs it as `/usr/local/bin/vps2cloud` (or `~/.local/bin` without root) with `v2c` as a short alias, and starts the test with its menu. Add `sh -s -- --no-run` (or set `V2C_NO_RUN=1`) to install only; without a terminal, as in CI, it only installs. Read it first if you like: it is [install.sh](install.sh).
 
+Install and run a test with options in one go (no menu):
+
+```sh
+curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.sh | sh -s -- -p aws,gcp --ip both
+```
+
 Run once without installing:
 
 ```sh
@@ -64,8 +70,9 @@ vps2cloud -m all -p hetzner        # TCP, HTTPS and ICMP side by side
 vps2cloud -6                       # over IPv6 (regions without IPv6 are skipped and counted)
 vps2cloud --ip both                # IPv4 and IPv6 in one run: one report with a part for each, one share link
 vps2cloud --preset game            # mark regions that fit gaming (median ≤ 60 ms, jitter ≤ 10, no loss)
-vps2cloud -o md                    # Markdown table for a forum post or an issue
-vps2cloud -o json | jq '.regions[0]'
+vps2cloud -o md                    # also save a Markdown table (vps2cloud-<date>-<time>.md) for a forum post
+vps2cloud -o json --file out.json  # save JSON (or CSV) under a name of your choice
+vps2cloud -o json --stdout | jq '.regions[0]'   # print it instead, for pipes
 vps2cloud --max-ms 50              # exit status 3 when even the best region is above 50 ms
 vps2cloud --list                   # providers; --list -p aws lists AWS's regions
 ```

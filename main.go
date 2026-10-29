@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -44,7 +45,10 @@ How to measure
   -C, --concurrency N     hosts measured at once (default 24; at most 2 per provider)
 
 Output
-  -o, --output FORMAT     table (default), md, json, csv
+  -o, --output FORMAT     table (default), or md, json, csv: saved to a file in the current folder
+                          (vps2cloud-<date>-<time>.<ext>) while the table shows on screen
+      --file NAME         the file to save to instead
+      --stdout            print the md, json or csv to stdout instead of a file (for pipes)
       --sort KEY          median (default), min, p90, jitter, loss, name
       --top N             only the N best regions (md defaults to 20)
       --preset NAME       mark regions that fit: game, call, ssh, web
@@ -73,7 +77,8 @@ type opts struct {
 	mode, output, sortBy, preset, endpoints, timeout, gap string
 	n, near, conc, top                                    int
 	v4, v6, noLink, showIP, noColor, quiet, offline, list bool
-	longLink                                              bool
+	longLink, toStdout                                    bool
+	file                                                  string
 	maxMS                                                 float64
 	ver                                                   bool
 	lang                                                  string
@@ -154,6 +159,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flg(&o.v6, "6")
 	flg(&o.noLink, "no-link")
 	flg(&o.longLink, "long-link")
+	flg(&o.toStdout, "stdout")
+	str(&o.file, "", "file")
 	flg(&o.showIP, "show-ip")
 	flg(&o.noColor, "no-color")
 	flg(&o.quiet, "q", "quiet")
@@ -362,15 +369,36 @@ func run(args []string, stdout, stderr io.Writer) int {
 			}
 		}
 	}
-	switch o.output {
-	case "md":
-		v.Markdown(stdout)
-	case "json":
-		v.JSON(stdout)
-	case "csv":
-		v.CSV(stdout)
-	default:
-		v.Table(stdout)
+	// Markdown, JSON and CSV go to a file next to where the tool runs (or to stdout with --stdout, for pipes); the
+	// table always shows in the terminal
+	if o.output == "table" || !o.toStdout {
+		t := v
+		if t.Top < 0 || o.output == "md" && o.top < 0 {
+			t.Top = 0
+		}
+		t.Table(stdout)
+	}
+	if o.output != "table" {
+		write := map[string]func(io.Writer){"md": v.Markdown, "json": v.JSON, "csv": v.CSV}[o.output]
+		if o.toStdout {
+			write(stdout)
+		} else {
+			name := o.file
+			if name == "" {
+				name = fmt.Sprintf("vps2cloud-%s.%s", start.Format("20060102-150405"), o.output)
+			}
+			f, err := os.Create(name)
+			if err != nil {
+				fmt.Fprintf(stderr, "vps2cloud: %v\n", err)
+				return 1
+			}
+			write(f)
+			f.Close()
+			if abs, err := filepath.Abs(name); err == nil {
+				name = abs
+			}
+			fmt.Fprintf(stdout, "%s %s\n", paint(cBold, T("saved")), paint(cGreen, name))
+		}
 	}
 	if o.maxMS > 0 {
 		best := -1.0

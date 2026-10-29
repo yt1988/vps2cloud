@@ -34,6 +34,12 @@ curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.
 
 脚本会按你的系统和 CPU 选对应的版本，从本仓库最新的 Release 下载，用 Release 里的 `checksums.txt` 校验，安装到 `/usr/local/bin/vps2cloud`（没有 root 权限时装到 `~/.local/bin`），同时创建短别名 `v2c`，然后直接打开菜单开始测试。只想安装不运行，加 `sh -s -- --no-run`（或设置 `V2C_NO_RUN=1`）；在没有终端的环境（比如 CI）里只安装、不运行。想先看看脚本做了什么：就是 [install.sh](install.sh)。
 
+安装后直接按参数跑一次测试（不出菜单）：
+
+```sh
+curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.sh | sh -s -- -p aws,gcp --ip both
+```
+
 只运行一次、不安装：
 
 ```sh
@@ -64,8 +70,9 @@ vps2cloud -m all -p hetzner        # TCP、HTTPS、ICMP 三种并排
 vps2cloud -6                       # 走 IPv6（没有 IPv6 的区域会跳过并计数）
 vps2cloud --ip both                # IPv4 和 IPv6 一次测完：一份报告分两部分，一个分享链接
 vps2cloud --preset game            # 标出适合打游戏的区域（中位数 ≤ 60 ms、抖动 ≤ 10、不丢包）
-vps2cloud -o md                    # 输出 Markdown 表格，贴到论坛或 issue
-vps2cloud -o json | jq '.regions[0]'
+vps2cloud -o md                    # 同时保存一份 Markdown 表格（vps2cloud-<日期>-<时间>.md），方便贴论坛
+vps2cloud -o json --file out.json  # 保存成 JSON（或 CSV），文件名自己定
+vps2cloud -o json --stdout | jq '.regions[0]'   # 改为输出到屏幕，方便接管道
 vps2cloud --max-ms 50              # 最快的区域也超过 50 ms 时，以退出码 3 结束
 vps2cloud --list                   # 列出厂商；--list -p aws 列出 AWS 的全部区域
 ```

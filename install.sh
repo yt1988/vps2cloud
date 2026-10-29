@@ -3,6 +3,7 @@
 # against the release's checksums.txt, and installs it as /usr/local/bin/vps2cloud (or ~/.local/bin when not root).
 #
 #   curl -fsSL https://v2c.1ms.dog/i | sh                  install, then start the test with its menu
+#   curl -fsSL https://v2c.1ms.dog/i | sh -s -- -p aws      install, then run with these options (no menu)
 #   curl -fsSL https://v2c.1ms.dog/i | sh -s -- --no-run    install only
 #   curl -fsSL https://v2c.1ms.dog/i | sh -s -- run [ARGS]  download to a temp dir, run once, delete
 #
@@ -77,9 +78,15 @@ say "Installed $("$dir/vps2cloud" --version) to $dir/vps2cloud (also as v2c)"
 case ":$PATH:" in *":$dir:"*) ;; *) say "Add $dir to your PATH to run it by name." ;; esac
 say "Run it again any time with: vps2cloud   (vps2cloud --help lists the options)"
 
-# Start the test right away with its menu. Piped into sh, this script's input is the script itself, so the menu reads
-# the keyboard from /dev/tty; without a terminal (CI, cron) it only installs.
-if [ "${1:-}" != "--no-run" ] && [ -z "${V2C_NO_RUN:-}" ] && { : </dev/tty; } 2>/dev/null; then
+# Start the test right away: with the options given after `sh -s --`, or else with its menu. Piped into sh, this
+# script's input is the script itself, so the menu reads the keyboard from /dev/tty; without a terminal (CI, cron)
+# and without options it only installs.
+if [ "${1:-}" = "--no-run" ] || [ -n "${V2C_NO_RUN:-}" ]; then exit 0; fi
+if [ $# -gt 0 ]; then
+  say ""
+  exec "$dir/vps2cloud" "$@"
+fi
+if { : </dev/tty; } 2>/dev/null; then
   say ""
   exec "$dir/vps2cloud" </dev/tty
 fi

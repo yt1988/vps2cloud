@@ -22,7 +22,17 @@ func keys(v6 bool, parts ...string) string {
 		}
 		b.WriteString(p + "\n")
 	}
-	return b.String()
+	// the last step, saving a file, keeps its default
+	return b.String() + "\n"
+}
+
+func TestWizardSave(t *testing.T) {
+	l, _ := parseList(embeddedList)
+	k := keys(hasRoute(6), "1", ipKey, "", "")
+	got := wizard(strings.NewReader(k[:len(k)-1]+"3\n"), io.Discard, l, false)
+	if !reflect.DeepEqual(got, []string{"-o", "json"}) {
+		t.Errorf("got %q", got)
+	}
 }
 
 func TestWizard(t *testing.T) {
@@ -68,7 +78,7 @@ func TestWizardBoth(t *testing.T) {
 		t.Skip("no IPv6 here: the IP question is not asked")
 	}
 	l, _ := parseList(embeddedList)
-	got := wizard(strings.NewReader("1\n3\n\n\n"), io.Discard, l, false)
+	got := wizard(strings.NewReader("1\n3\n\n\n\n"), io.Discard, l, false)
 	if !reflect.DeepEqual(got, []string{"--ip", "both"}) {
 		t.Errorf("got %q", got)
 	}

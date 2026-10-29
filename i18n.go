@@ -109,6 +109,7 @@ var texts = map[string]map[string]string{
 		"icmpSkip": "ICMP is not available here (needs root or CAP_NET_RAW); measuring the other modes", "noMatch": "no region matches those filters",
 		"back": "Back", "exit": "Exit", "answered": "%d of %d regions answered%s", "took": "Took %s · endpoints: %s",
 		"shortFail": "the short link service did not answer; showing the full link",
+		"saved":     "Saved:", "saveQ": "Also save the result as a file?", "saveNo": "No, the table on screen is enough",
 	},
 	"zh-CN": {
 		"title": "VPS2Cloud %s · 测这台机器到 %d 个云区域的延迟", "machine": "本机：%s · 回车选 [默认] · Ctrl-C 退出",
@@ -125,6 +126,7 @@ var texts = map[string]map[string]string{
 		"icmpSkip": "这里用不了 ICMP（需要 root 或 CAP_NET_RAW），只测其他方式", "noMatch": "没有符合这些条件的区域",
 		"back": "返回上一步", "exit": "退出", "answered": "%d / %d 个区域有响应%s", "took": "用时 %s · 节点清单：%s",
 		"shortFail": "短链服务没有响应，改为显示完整链接",
+		"saved":     "已保存：", "saveQ": "同时把结果保存成文件吗？", "saveNo": "不用，看屏幕上的表格就行",
 	},
 	"zh-TW": {
 		"title": "VPS2Cloud %s · 測這台機器到 %d 個雲端區域的延遲", "machine": "本機：%s · Enter 選 [預設] · Ctrl-C 離開",
@@ -141,6 +143,7 @@ var texts = map[string]map[string]string{
 		"icmpSkip": "這裡無法使用 ICMP（需要 root 或 CAP_NET_RAW），只測其他方式", "noMatch": "沒有符合這些條件的區域",
 		"back": "返回上一步", "exit": "離開", "answered": "%d / %d 個區域有回應%s", "took": "耗時 %s · 節點清單：%s",
 		"shortFail": "短網址服務沒有回應，改為顯示完整連結",
+		"saved":     "已儲存：", "saveQ": "同時把結果存成檔案嗎？", "saveNo": "不用，看螢幕上的表格就好",
 	},
 	"ja": {
 		"title": "VPS2Cloud %s · このマシンから %d のクラウドリージョンまでの遅延", "machine": "このマシン：%s · Enter で [既定] · Ctrl-C で終了",
@@ -157,6 +160,7 @@ var texts = map[string]map[string]string{
 		"icmpSkip": "ここでは ICMP を使えません（root か CAP_NET_RAW が必要）。ほかの方法で測ります", "noMatch": "条件に合うリージョンがありません",
 		"back": "前に戻る", "exit": "終了", "answered": "%d / %d リージョンが応答%s", "took": "所要 %s · エンドポイント：%s",
 		"shortFail": "短縮リンクのサービスが応答しないため、完全なリンクを表示します",
+		"saved":     "保存しました：", "saveQ": "結果をファイルにも保存しますか？", "saveNo": "いいえ、画面の表で十分",
 	},
 	"ko": {
 		"title": "VPS2Cloud %s · 이 머신에서 %d개 클라우드 리전까지의 지연", "machine": "이 머신: %s · Enter는 [기본값] · Ctrl-C는 종료",
@@ -173,6 +177,7 @@ var texts = map[string]map[string]string{
 		"icmpSkip": "여기서는 ICMP를 쓸 수 없습니다(root 또는 CAP_NET_RAW 필요). 다른 방법으로 측정합니다", "noMatch": "조건에 맞는 리전이 없습니다",
 		"back": "이전으로", "exit": "종료", "answered": "%d / %d개 리전 응답%s", "took": "소요 %s · 엔드포인트: %s",
 		"shortFail": "단축 링크 서비스가 응답하지 않아 전체 링크를 표시합니다",
+		"saved":     "저장됨:", "saveQ": "결과를 파일로도 저장할까요?", "saveNo": "아니요, 화면의 표면 충분합니다",
 	},
 	"es": {
 		"title": "VPS2Cloud %s · latencia desde esta máquina a %d regiones en la nube", "machine": "Esta máquina: %s · Enter deja el [predeterminado] · Ctrl-C sale",
@@ -189,6 +194,7 @@ var texts = map[string]map[string]string{
 		"icmpSkip": "ICMP no está disponible aquí (requiere root o CAP_NET_RAW); se miden los demás modos", "noMatch": "ninguna región coincide con esos filtros",
 		"back": "Atrás", "exit": "Salir", "answered": "Respondieron %d de %d regiones%s", "took": "Duración %s · endpoints: %s",
 		"shortFail": "el servicio de enlaces cortos no respondió; se muestra el enlace completo",
+		"saved":     "Guardado:", "saveQ": "¿Guardar también el resultado en un archivo?", "saveNo": "No, basta con la tabla en pantalla",
 	},
 	"fr": {
 		"title": "VPS2Cloud %s · latence de cette machine vers %d régions cloud", "machine": "Cette machine : %s · Entrée garde la [valeur par défaut] · Ctrl-C quitte",
@@ -205,6 +211,7 @@ var texts = map[string]map[string]string{
 		"icmpSkip": "ICMP n’est pas disponible ici (nécessite root ou CAP_NET_RAW) ; mesure des autres modes", "noMatch": "aucune région ne correspond à ces filtres",
 		"back": "Retour", "exit": "Quitter", "answered": "%d régions sur %d ont répondu%s", "took": "Durée %s · endpoints : %s",
 		"shortFail": "le service de liens courts n’a pas répondu ; lien complet affiché",
+		"saved":     "Enregistré :", "saveQ": "Enregistrer aussi le résultat dans un fichier ?", "saveNo": "Non, le tableau à l’écran suffit",
 	},
 	"de": {
 		"title": "VPS2Cloud %s · Latenz von diesem Rechner zu %d Cloud-Regionen", "machine": "Dieser Rechner: %s · Enter übernimmt den [Standard] · Strg-C beendet",
@@ -221,6 +228,7 @@ var texts = map[string]map[string]string{
 		"icmpSkip": "ICMP ist hier nicht verfügbar (braucht root oder CAP_NET_RAW); die anderen Methoden werden gemessen", "noMatch": "keine Region passt zu diesen Filtern",
 		"back": "Zurück", "exit": "Beenden", "answered": "%d von %d Regionen haben geantwortet%s", "took": "Dauer %s · Endpunkte: %s",
 		"shortFail": "der Kurzlink-Dienst hat nicht geantwortet; der vollständige Link wird angezeigt",
+		"saved":     "Gespeichert:", "saveQ": "Ergebnis zusätzlich als Datei speichern?", "saveNo": "Nein, die Tabelle am Bildschirm reicht",
 	},
 	"pt": {
 		"title": "VPS2Cloud %s · latência desta máquina para %d regiões de nuvem", "machine": "Esta máquina: %s · Enter mantém o [padrão] · Ctrl-C sai",
@@ -237,6 +245,7 @@ var texts = map[string]map[string]string{
 		"icmpSkip": "ICMP não está disponível aqui (requer root ou CAP_NET_RAW); medindo os outros modos", "noMatch": "nenhuma região corresponde a esses filtros",
 		"back": "Voltar", "exit": "Sair", "answered": "%d de %d regiões responderam%s", "took": "Duração %s · endpoints: %s",
 		"shortFail": "o serviço de links curtos não respondeu; mostrando o link completo",
+		"saved":     "Salvo:", "saveQ": "Salvar também o resultado num arquivo?", "saveNo": "Não, a tabela na tela basta",
 	},
 	"ru": {
 		"title": "VPS2Cloud %s · задержка от этой машины до %d облачных регионов", "machine": "Эта машина: %s · Enter оставляет [по умолчанию] · Ctrl-C — выход",
@@ -253,5 +262,6 @@ var texts = map[string]map[string]string{
 		"icmpSkip": "ICMP здесь недоступен (нужен root или CAP_NET_RAW); измеряем остальными способами", "noMatch": "ни один регион не подходит под эти фильтры",
 		"back": "Назад", "exit": "Выход", "answered": "Ответили %d из %d регионов%s", "took": "Заняло %s · эндпоинты: %s",
 		"shortFail": "сервис коротких ссылок не ответил; показана полная ссылка",
+		"saved":     "Сохранено:", "saveQ": "Сохранить результат ещё и в файл?", "saveNo": "Нет, достаточно таблицы на экране",
 	},
 }
