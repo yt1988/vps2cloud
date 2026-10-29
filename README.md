@@ -23,7 +23,7 @@ from Nuremberg, DE · netcup GmbH (AS197540)
 … 355 more (--top 0 shows all)
 
 361 of 361 regions answered in 1m13s
-View and share: https://v2c.1ms.dog/r#s=…
+View and share: https://s.1ms.dog/9eeaap
 ```
 
 ## Install
@@ -94,12 +94,15 @@ Each host gets one sample at a time with a 250 ms pause in between, at most four
 
 ## Privacy and what goes over the network
 
-Besides the measurement itself, a run makes three requests:
+Besides the measurement itself, a run makes these requests:
 
 - **The endpoint list** from `v2c.1ms.dog` (falling back to `m2c.1ms.dog`, then to the copy built into the binary). This request is how runs are counted: its User-Agent says `vps2cloud/<version> (<os>/<arch>[; ci])` and nothing else about the machine. `--offline` skips it.
 - **Cloudflare's `/meta` and ident.me** to name the network the test runs from (city, provider, ASN) for the "from" line.
+- **The short link service** `s.1ms.dog`, to turn the share link into a short one (see below).
 
-Results are never uploaded. The share link carries them in the URL fragment (`#…`), which browsers do not send to any server; it holds the per-region numbers and the "from" line, never the IP address. It is compact (about 2,000 characters for all 361 regions, a few hundred for 20; the format is in [docs/share-format.md](docs/share-format.md)). `--no-link` leaves it out. The IP is only printed with `--show-ip`.
+The share link is short, like `https://s.1ms.dog/9eeaap`. It points to the full link, which carries the result itself: the per-region numbers and the "from" line (city, provider), never the IP address. To make the short link, the full link is stored on `s.1ms.dog` (a 1ms.dog service on Cloudflare), permanently, so the result can be opened later; the same result always gets the same short link. Nothing else is uploaded.
+
+To keep the result off any server, use `--long-link`: you get the full link, which carries everything in the URL fragment (`#…`) that browsers do not send to a server (about 2,000 characters for all 361 regions, a few hundred for 20; the format is in [docs/share-format.md](docs/share-format.md)). `--offline` does the same, and when the short link service does not answer, the full link is shown. `--no-link` makes no link at all. The IP is only printed with `--show-ip`.
 
 ## Endpoints
 

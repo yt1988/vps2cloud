@@ -108,6 +108,7 @@ var texts = map[string]map[string]string{
 		"link": "View and share:", "fullResult": "Full result", "topOf": "Top %d of %d regions.", "scanning": "scanning", "measuring": "measuring",
 		"icmpSkip": "ICMP is not available here (needs root or CAP_NET_RAW); measuring the other modes", "noMatch": "no region matches those filters",
 		"back": "Back", "exit": "Exit", "answered": "%d of %d regions answered%s", "took": "Took %s · endpoints: %s",
+		"shortFail": "the short link service did not answer; showing the full link",
 	},
 	"zh-CN": {
 		"title": "VPS2Cloud %s · 测这台机器到 %d 个云区域的延迟", "machine": "本机：%s · 回车选 [默认] · Ctrl-C 退出",
@@ -123,6 +124,7 @@ var texts = map[string]map[string]string{
 		"link": "查看和分享：", "fullResult": "完整结果", "topOf": "共 %[2]d 个区域，这里是前 %[1]d 个。", "scanning": "扫描中", "measuring": "测量中",
 		"icmpSkip": "这里用不了 ICMP（需要 root 或 CAP_NET_RAW），只测其他方式", "noMatch": "没有符合这些条件的区域",
 		"back": "返回上一步", "exit": "退出", "answered": "%d / %d 个区域有响应%s", "took": "用时 %s · 节点清单：%s",
+		"shortFail": "短链服务没有响应，改为显示完整链接",
 	},
 	"zh-TW": {
 		"title": "VPS2Cloud %s · 測這台機器到 %d 個雲端區域的延遲", "machine": "本機：%s · Enter 選 [預設] · Ctrl-C 離開",
@@ -138,6 +140,7 @@ var texts = map[string]map[string]string{
 		"link": "檢視與分享：", "fullResult": "完整結果", "topOf": "共 %[2]d 個區域，這裡是前 %[1]d 個。", "scanning": "掃描中", "measuring": "測量中",
 		"icmpSkip": "這裡無法使用 ICMP（需要 root 或 CAP_NET_RAW），只測其他方式", "noMatch": "沒有符合這些條件的區域",
 		"back": "返回上一步", "exit": "離開", "answered": "%d / %d 個區域有回應%s", "took": "耗時 %s · 節點清單：%s",
+		"shortFail": "短網址服務沒有回應，改為顯示完整連結",
 	},
 	"ja": {
 		"title": "VPS2Cloud %s · このマシンから %d のクラウドリージョンまでの遅延", "machine": "このマシン：%s · Enter で [既定] · Ctrl-C で終了",
@@ -153,6 +156,7 @@ var texts = map[string]map[string]string{
 		"link": "表示と共有：", "fullResult": "全結果", "topOf": "%[2]d リージョン中の上位 %[1]d 件。", "scanning": "スキャン中", "measuring": "測定中",
 		"icmpSkip": "ここでは ICMP を使えません（root か CAP_NET_RAW が必要）。ほかの方法で測ります", "noMatch": "条件に合うリージョンがありません",
 		"back": "前に戻る", "exit": "終了", "answered": "%d / %d リージョンが応答%s", "took": "所要 %s · エンドポイント：%s",
+		"shortFail": "短縮リンクのサービスが応答しないため、完全なリンクを表示します",
 	},
 	"ko": {
 		"title": "VPS2Cloud %s · 이 머신에서 %d개 클라우드 리전까지의 지연", "machine": "이 머신: %s · Enter는 [기본값] · Ctrl-C는 종료",
@@ -168,6 +172,7 @@ var texts = map[string]map[string]string{
 		"link": "보기 및 공유:", "fullResult": "전체 결과", "topOf": "%[2]d개 리전 중 상위 %[1]d개.", "scanning": "스캔 중", "measuring": "측정 중",
 		"icmpSkip": "여기서는 ICMP를 쓸 수 없습니다(root 또는 CAP_NET_RAW 필요). 다른 방법으로 측정합니다", "noMatch": "조건에 맞는 리전이 없습니다",
 		"back": "이전으로", "exit": "종료", "answered": "%d / %d개 리전 응답%s", "took": "소요 %s · 엔드포인트: %s",
+		"shortFail": "단축 링크 서비스가 응답하지 않아 전체 링크를 표시합니다",
 	},
 	"es": {
 		"title": "VPS2Cloud %s · latencia desde esta máquina a %d regiones en la nube", "machine": "Esta máquina: %s · Enter deja el [predeterminado] · Ctrl-C sale",
@@ -183,6 +188,7 @@ var texts = map[string]map[string]string{
 		"link": "Ver y compartir:", "fullResult": "Resultado completo", "topOf": "Las %d mejores de %d regiones.", "scanning": "explorando", "measuring": "midiendo",
 		"icmpSkip": "ICMP no está disponible aquí (requiere root o CAP_NET_RAW); se miden los demás modos", "noMatch": "ninguna región coincide con esos filtros",
 		"back": "Atrás", "exit": "Salir", "answered": "Respondieron %d de %d regiones%s", "took": "Duración %s · endpoints: %s",
+		"shortFail": "el servicio de enlaces cortos no respondió; se muestra el enlace completo",
 	},
 	"fr": {
 		"title": "VPS2Cloud %s · latence de cette machine vers %d régions cloud", "machine": "Cette machine : %s · Entrée garde la [valeur par défaut] · Ctrl-C quitte",
@@ -198,6 +204,7 @@ var texts = map[string]map[string]string{
 		"link": "Voir et partager :", "fullResult": "Résultat complet", "topOf": "Les %d meilleures sur %d régions.", "scanning": "balayage", "measuring": "mesure",
 		"icmpSkip": "ICMP n’est pas disponible ici (nécessite root ou CAP_NET_RAW) ; mesure des autres modes", "noMatch": "aucune région ne correspond à ces filtres",
 		"back": "Retour", "exit": "Quitter", "answered": "%d régions sur %d ont répondu%s", "took": "Durée %s · endpoints : %s",
+		"shortFail": "le service de liens courts n’a pas répondu ; lien complet affiché",
 	},
 	"de": {
 		"title": "VPS2Cloud %s · Latenz von diesem Rechner zu %d Cloud-Regionen", "machine": "Dieser Rechner: %s · Enter übernimmt den [Standard] · Strg-C beendet",
@@ -213,6 +220,7 @@ var texts = map[string]map[string]string{
 		"link": "Ansehen und teilen:", "fullResult": "Vollständiges Ergebnis", "topOf": "Die besten %d von %d Regionen.", "scanning": "Scan", "measuring": "Messung",
 		"icmpSkip": "ICMP ist hier nicht verfügbar (braucht root oder CAP_NET_RAW); die anderen Methoden werden gemessen", "noMatch": "keine Region passt zu diesen Filtern",
 		"back": "Zurück", "exit": "Beenden", "answered": "%d von %d Regionen haben geantwortet%s", "took": "Dauer %s · Endpunkte: %s",
+		"shortFail": "der Kurzlink-Dienst hat nicht geantwortet; der vollständige Link wird angezeigt",
 	},
 	"pt": {
 		"title": "VPS2Cloud %s · latência desta máquina para %d regiões de nuvem", "machine": "Esta máquina: %s · Enter mantém o [padrão] · Ctrl-C sai",
@@ -228,6 +236,7 @@ var texts = map[string]map[string]string{
 		"link": "Ver e compartilhar:", "fullResult": "Resultado completo", "topOf": "As %d melhores de %d regiões.", "scanning": "varrendo", "measuring": "medindo",
 		"icmpSkip": "ICMP não está disponível aqui (requer root ou CAP_NET_RAW); medindo os outros modos", "noMatch": "nenhuma região corresponde a esses filtros",
 		"back": "Voltar", "exit": "Sair", "answered": "%d de %d regiões responderam%s", "took": "Duração %s · endpoints: %s",
+		"shortFail": "o serviço de links curtos não respondeu; mostrando o link completo",
 	},
 	"ru": {
 		"title": "VPS2Cloud %s · задержка от этой машины до %d облачных регионов", "machine": "Эта машина: %s · Enter оставляет [по умолчанию] · Ctrl-C — выход",
@@ -243,5 +252,6 @@ var texts = map[string]map[string]string{
 		"link": "Посмотреть и поделиться:", "fullResult": "Полный результат", "topOf": "Лучшие %d из %d регионов.", "scanning": "сканирование", "measuring": "измерение",
 		"icmpSkip": "ICMP здесь недоступен (нужен root или CAP_NET_RAW); измеряем остальными способами", "noMatch": "ни один регион не подходит под эти фильтры",
 		"back": "Назад", "exit": "Выход", "answered": "Ответили %d из %d регионов%s", "took": "Заняло %s · эндпоинты: %s",
+		"shortFail": "сервис коротких ссылок не ответил; показана полная ссылка",
 	},
 }

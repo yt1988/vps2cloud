@@ -39,18 +39,19 @@ type Section struct {
 }
 
 type View struct {
-	Secs   []Section
-	Modes  []string
-	List   *List
-	Origin *Origin
-	ShowIP bool
-	N      int
-	At     time.Time
-	Took   time.Duration
-	Preset string
-	Top    int
-	Link   string
-	SortBy string
+	Secs     []Section
+	Modes    []string
+	List     *List
+	Origin   *Origin
+	ShowIP   bool
+	N        int
+	At       time.Time
+	Took     time.Duration
+	Preset   string
+	Top      int
+	Link     string // the short link, or the full one when there is no short link
+	LinkFull string
+	SortBy   string
 }
 
 // sortResults ranks by the first mode: answered hosts first, by the chosen key, then by median.
@@ -434,8 +435,9 @@ func (v View) JSON(w io.Writer) {
 		Endpoints string    `json:"endpoints"`
 		Preset    string    `json:"preset,omitempty"`
 		Link      string    `json:"link,omitempty"`
+		LinkFull  string    `json:"link_full,omitempty"`
 		Regions   []row     `json:"regions"`
-	}{"vps2cloud", version, v.At.UTC(), v.Modes, v.N, fams, noV6, o, v.List.Source, v.Preset, v.Link, nil}
+	}{"vps2cloud", version, v.At.UTC(), v.Modes, v.N, fams, noV6, o, v.List.Source, v.Preset, v.Link, v.LinkFull, nil}
 	for _, s := range v.Secs {
 		for _, r := range v.shown(s) {
 			x := row{ID: r.E.ID, Family: s.Fam, Provider: r.E.Vendor, Region: r.E.Region, City: r.E.City, Country: r.E.Country, Continent: r.E.Continent,

@@ -48,7 +48,8 @@ Output
       --sort KEY          median (default), min, p90, jitter, loss, name
       --top N             only the N best regions (md defaults to 20)
       --preset NAME       mark regions that fit: game, call, ssh, web
-      --no-link           don't print the share link
+      --long-link         print the full share link instead of a short s.1ms.dog one (nothing is uploaded)
+      --no-link           don't print a share link
       --show-ip           include this machine's public IP (never in share links)
       --no-color          plain text (also with NO_COLOR set)
   -q, --quiet             no progress line
@@ -72,6 +73,7 @@ type opts struct {
 	mode, output, sortBy, preset, endpoints, timeout, gap string
 	n, near, conc, top                                    int
 	v4, v6, noLink, showIP, noColor, quiet, offline, list bool
+	longLink                                              bool
 	maxMS                                                 float64
 	ver                                                   bool
 	lang                                                  string
@@ -151,6 +153,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flg(&o.v4, "4")
 	flg(&o.v6, "6")
 	flg(&o.noLink, "no-link")
+	flg(&o.longLink, "long-link")
 	flg(&o.showIP, "show-ip")
 	flg(&o.noColor, "no-color")
 	flg(&o.quiet, "q", "quiet")
@@ -347,7 +350,17 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if !o.noLink {
-		v.Link = shareLink(secs, list, modes, o.n, v.Origin, start)
+		// the short link stores the full one on s.1ms.dog; without it (--long-link, --offline, or the service not
+		// answering) the full link carries the result by itself
+		v.LinkFull = shareLink(secs, list, modes, o.n, v.Origin, start)
+		v.Link = v.LinkFull
+		if !o.longLink && !o.offline {
+			if s, err := shorten(v.LinkFull, ua); err == nil {
+				v.Link = s
+			} else if !o.quiet {
+				fmt.Fprintln(stderr, paint(cDim, "vps2cloud: "+T("shortFail")))
+			}
+		}
 	}
 	switch o.output {
 	case "md":

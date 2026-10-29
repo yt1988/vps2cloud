@@ -6,7 +6,13 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"math"
+	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -112,4 +118,35 @@ func encodeShare(secs []Section, l *List, modes []string, n int, o *Origin, at t
 
 func shareLink(secs []Section, l *List, modes []string, n int, o *Origin, at time.Time) string {
 	return siteURL() + "/r#s=" + base64.RawURLEncoding.EncodeToString(encodeShare(secs, l, modes, n, o, at))
+}
+
+// shortenerURL is the 1ms.dog short link service. It stores the full link (and so the result in it) and returns
+// https://s.1ms.dog/<code>, which redirects there; the same link always gets the same code. It only takes links on
+// 1ms.dog, so a self-hosted site (V2C_SITE) keeps full links.
+var shortenerURL = "https://s.1ms.dog/api/shorten"
+
+func shorten(long, ua string) (string, error) {
+	if u, err := url.Parse(long); err != nil || !(u.Hostname() == "1ms.dog" || strings.HasSuffix(u.Hostname(), ".1ms.dog")) {
+		return "", errors.New("not a 1ms.dog link")
+	}
+	body, _ := json.Marshal(map[string]string{"url": long})
+	req, _ := http.NewRequest("POST", shortenerURL, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", ua)
+	res, err := (&http.Client{Timeout: 6 * time.Second}).Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	var out struct {
+		URL   string `json:"url"`
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(io.LimitReader(res.Body, 4096)).Decode(&out); err != nil {
+		return "", err
+	}
+	if res.StatusCode != 200 || !strings.HasPrefix(out.URL, "https://") {
+		return "", fmt.Errorf("%s %s", res.Status, out.Error)
+	}
+	return out.URL, nil
 }

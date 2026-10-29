@@ -5,8 +5,11 @@ import (
 	"compress/flate"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"io"
 	"math/rand/v2"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -150,4 +153,34 @@ func TestShareLength(t *testing.T) {
 	}
 	both := shareLink([]Section{{Fam: 4, Res: fakeResults(l, 1, 4)}, {Fam: 6, Res: fakeResults(l, 4, 6)}}, l, []string{"tcp"}, 10, o, time.Now())
 	t.Logf("all regions over IPv4 and IPv6: %d characters", len(both))
+}
+
+func TestShorten(t *testing.T) {
+	var got struct{ URL string }
+	ok := true
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&got)
+		if !ok {
+			w.WriteHeader(429)
+			w.Write([]byte(`{"error":"too many requests"}`))
+			return
+		}
+		w.Write([]byte(`{"url":"https://s.1ms.dog/x7Kp2a"}`))
+	}))
+	defer srv.Close()
+	defer func(u string) { shortenerURL = u }(shortenerURL)
+	shortenerURL = srv.URL
+
+	long := "https://v2c.1ms.dog/r#s=abc"
+	if s, err := shorten(long, "test"); err != nil || s != "https://s.1ms.dog/x7Kp2a" || got.URL != long {
+		t.Fatalf("short %q, err %v, sent %q", s, err, got.URL)
+	}
+	ok = false
+	if _, err := shorten(long, "test"); err == nil {
+		t.Error("a 429 should be an error, so the full link is used")
+	}
+	got.URL = ""
+	if _, err := shorten("https://example.com/r#s=abc", "test"); err == nil || got.URL != "" {
+		t.Error("links off 1ms.dog must not be sent")
+	}
 }
