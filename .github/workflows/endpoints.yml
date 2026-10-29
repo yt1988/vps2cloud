@@ -1,0 +1,23 @@
+# Daily: copy Me2Cloud's endpoint list into this repo when it changes, so the built-in snapshot stays current.
+name: endpoints
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/yt1988/me2cloud/main/public/endpoints.json -o new.json
+          jq -e '.schema == 1 and (.endpoints | length) > 100' new.json
+          if cmp -s new.json endpoints.json; then echo "unchanged"; rm new.json; exit 0; fi
+          mv new.json endpoints.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Update endpoints from Me2Cloud ($(jq -r .verified endpoints.json))"
+          git push
