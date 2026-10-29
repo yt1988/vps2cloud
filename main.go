@@ -65,10 +65,14 @@ Endpoint list
       --lang CODE         language of the output: en, zh-CN, zh-TW, ja, ko, es, fr, de, pt, ru
                           (the menu asks once and remembers it; V2C_LANG works too)
   -v, --version
+      --update            update to the latest release now
 
 Each run fetches the latest endpoint list from v2c.1ms.dog. That request is counted (tool version, OS and CPU type,
 whether it runs in CI) and is the only one made besides the measurement itself and Cloudflare's /meta for the
 "from" line. --offline skips the download. Results are never uploaded; a share link carries them in the URL.
+
+At most every 12 hours it also asks GitHub for the latest release and, in a terminal, offers to update (the new binary
+is checked against the release checksums). --offline or V2C_NO_UPDATE=1 turns that off.
 `
 
 type opts struct {
@@ -95,6 +99,9 @@ func main() {
 		lang, askLang = l, false
 	}
 	args := os.Args[1:]
+	if code, stop := checkUpdate(args, userAgent()); stop {
+		os.Exit(code)
+	}
 	if len(args) > 0 || !isTTY(os.Stdin) || !isTTY(os.Stdout) {
 		os.Exit(run(args, os.Stdout, os.Stderr))
 	}

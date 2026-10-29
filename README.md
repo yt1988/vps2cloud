@@ -8,6 +8,8 @@ One static binary, no dependencies. Run it on a VPS, a router or in CI to see wh
 
 It is the server-side companion of [Me2Cloud](https://m2c.1ms.dog), which runs the same test from your browser, and uses the same endpoint list.
 
+**Website: [v2c.1ms.dog](https://v2c.1ms.dog)**: pick providers, continents, IP version, measurement and samples, and it writes the command for you to copy; share links from the tool open there as a full, sortable result page.
+
 ```
 $ vps2cloud --top 6
 VPS2Cloud 0.2.0 · TCP handshake · 10 samples · IPv4 · 2026-10-29 04:09 UTC
@@ -29,6 +31,12 @@ View and share: https://s.1ms.dog/9eeaap
 ## Install
 
 ```sh
+curl -fsSL https://v2c.1ms.dog/i | sh
+```
+
+`v2c.1ms.dog/i` serves the same script as this repository's release; the long form is
+
+```sh
 curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.sh | sh
 ```
 
@@ -37,16 +45,20 @@ The script picks the build for your OS and CPU, downloads it from this repositor
 Install and run a test with options in one go (no menu):
 
 ```sh
-curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.sh | sh -s -- -p aws,gcp --ip both
+curl -fsSL https://v2c.1ms.dog/i | sh -s -- -p aws,gcp --ip both
 ```
 
 Run once without installing:
 
 ```sh
-curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.sh | sh -s -- run
+curl -fsSL https://v2c.1ms.dog/i | sh -s -- run
 ```
 
 Or download a binary from [Releases](https://github.com/yt1988/vps2cloud/releases): Linux (amd64, arm64, armv7, 386, riscv64, mips, mipsle for OpenWrt), macOS, FreeBSD and Windows.
+
+### Updates
+
+At most every 12 hours, vps2cloud asks GitHub which release is the latest. In a terminal it then offers the update (`vps2cloud v0.5.0 is out (you have v0.4.0). Update now? [Y/n]`); on yes it downloads the build for your system, checks it against the release's `checksums.txt`, replaces itself and carries on with the same options. Without a terminal it only prints a one-line note. `vps2cloud --update` updates right away; `--offline` or `V2C_NO_UPDATE=1` turns the check off. When the binary sits where you can't write (`/usr/local/bin` without root), run the update with `sudo` or install again.
 
 ## Usage
 
@@ -76,7 +88,7 @@ vps2cloud --max-ms 50              # exit status 3 when even the best region is 
 vps2cloud --list                   # providers; --list -p aws lists AWS's regions
 ```
 
-`vps2cloud --help` lists every option.
+`vps2cloud --help` lists every option. Or let [v2c.1ms.dog](https://v2c.1ms.dog) write the command: choose on the page, copy, paste.
 
 ### Language
 
@@ -105,6 +117,7 @@ Besides the measurement itself, a run makes these requests:
 - **The endpoint list** from `v2c.1ms.dog` (falling back to `m2c.1ms.dog`, then to the copy built into the binary). This request is how runs are counted: its User-Agent says `vps2cloud/<version> (<os>/<arch>[; ci])` and nothing else about the machine. `--offline` skips it.
 - **Cloudflare's `/meta` and ident.me** to name the network the test runs from (city, provider, ASN) for the "from" line.
 - **The short link service** `s.1ms.dog`, to turn the share link into a short one (see below).
+- **The update check**, a request to `github.com/yt1988/vps2cloud/releases/latest` at most every 12 hours (see [Updates](#updates)). `--offline` or `V2C_NO_UPDATE=1` skips it.
 
 The share link is short, like `https://s.1ms.dog/9eeaap`. It points to the full link, which carries the result itself: the per-region numbers and the "from" line (city, provider), never the IP address. To make the short link, the full link is stored on `s.1ms.dog` (a 1ms.dog service on Cloudflare), permanently, so the result can be opened later; the same result always gets the same short link. Nothing else is uploaded.
 

@@ -40,7 +40,9 @@ func knownLang(code string) string {
 
 // The saved choice lives in the user's config directory (~/.config/vps2cloud/config.json on Linux).
 type config struct {
-	Lang string `json:"lang,omitempty"`
+	Lang      string `json:"lang,omitempty"`
+	Latest    string `json:"latest,omitempty"`     // newest release seen
+	CheckedAt int64  `json:"checked_at,omitempty"` // when it was looked up (Unix seconds)
 }
 
 func configPath() string {
@@ -110,6 +112,7 @@ var texts = map[string]map[string]string{
 		"back": "Back", "exit": "Exit", "answered": "%d of %d regions answered%s", "took": "Took %s · endpoints: %s",
 		"shortFail": "the short link service did not answer; showing the full link",
 		"saved":     "Saved:", "saveQ": "Also save the result as a file?", "saveNo": "No, the table on screen is enough",
+		"updAsk": "vps2cloud v%s is out (you have v%s). Update now?", "updNote": "vps2cloud v%s is available: run vps2cloud --update", "updDone": "Updated to v%s", "updLatest": "vps2cloud v%s is the latest version", "updFail": "update failed: %s", "updPerm": "no permission to replace %s; run it with sudo, or install again: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Run vps2cloud again to use the new version.",
 	},
 	"zh-CN": {
 		"title": "VPS2Cloud %s · 测这台机器到 %d 个云区域的延迟", "machine": "本机：%s · 回车选 [默认] · Ctrl-C 退出",
@@ -127,6 +130,7 @@ var texts = map[string]map[string]string{
 		"back": "返回上一步", "exit": "退出", "answered": "%d / %d 个区域有响应%s", "took": "用时 %s · 节点清单：%s",
 		"shortFail": "短链服务没有响应，改为显示完整链接",
 		"saved":     "已保存：", "saveQ": "同时把结果保存成文件吗？", "saveNo": "不用，看屏幕上的表格就行",
+		"updAsk": "发现新版本 v%s（当前 v%s），现在更新吗？", "updNote": "vps2cloud 有新版本 v%s：运行 vps2cloud --update 更新", "updDone": "已更新到 v%s", "updLatest": "vps2cloud v%s 已是最新版本", "updFail": "更新失败：%s", "updPerm": "没有权限替换 %s；请用 sudo 运行，或重新安装：curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "请重新运行 vps2cloud 以使用新版本。",
 	},
 	"zh-TW": {
 		"title": "VPS2Cloud %s · 測這台機器到 %d 個雲端區域的延遲", "machine": "本機：%s · Enter 選 [預設] · Ctrl-C 離開",
@@ -144,6 +148,7 @@ var texts = map[string]map[string]string{
 		"back": "返回上一步", "exit": "離開", "answered": "%d / %d 個區域有回應%s", "took": "耗時 %s · 節點清單：%s",
 		"shortFail": "短網址服務沒有回應，改為顯示完整連結",
 		"saved":     "已儲存：", "saveQ": "同時把結果存成檔案嗎？", "saveNo": "不用，看螢幕上的表格就好",
+		"updAsk": "發現新版本 v%s（目前 v%s），現在更新嗎？", "updNote": "vps2cloud 有新版本 v%s：執行 vps2cloud --update 更新", "updDone": "已更新到 v%s", "updLatest": "vps2cloud v%s 已是最新版本", "updFail": "更新失敗：%s", "updPerm": "沒有權限取代 %s；請用 sudo 執行，或重新安裝：curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "請重新執行 vps2cloud 以使用新版本。",
 	},
 	"ja": {
 		"title": "VPS2Cloud %s · このマシンから %d のクラウドリージョンまでの遅延", "machine": "このマシン：%s · Enter で [既定] · Ctrl-C で終了",
@@ -161,6 +166,7 @@ var texts = map[string]map[string]string{
 		"back": "前に戻る", "exit": "終了", "answered": "%d / %d リージョンが応答%s", "took": "所要 %s · エンドポイント：%s",
 		"shortFail": "短縮リンクのサービスが応答しないため、完全なリンクを表示します",
 		"saved":     "保存しました：", "saveQ": "結果をファイルにも保存しますか？", "saveNo": "いいえ、画面の表で十分",
+		"updAsk": "新しいバージョン v%s があります（現在 v%s）。今すぐ更新しますか？", "updNote": "vps2cloud v%s が利用できます：vps2cloud --update で更新", "updDone": "v%s に更新しました", "updLatest": "vps2cloud v%s は最新版です", "updFail": "更新に失敗しました：%s", "updPerm": "%s を置き換える権限がありません。sudo で実行するか再インストールしてください：curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "新しいバージョンを使うには vps2cloud をもう一度実行してください。",
 	},
 	"ko": {
 		"title": "VPS2Cloud %s · 이 머신에서 %d개 클라우드 리전까지의 지연", "machine": "이 머신: %s · Enter는 [기본값] · Ctrl-C는 종료",
@@ -178,6 +184,7 @@ var texts = map[string]map[string]string{
 		"back": "이전으로", "exit": "종료", "answered": "%d / %d개 리전 응답%s", "took": "소요 %s · 엔드포인트: %s",
 		"shortFail": "단축 링크 서비스가 응답하지 않아 전체 링크를 표시합니다",
 		"saved":     "저장됨:", "saveQ": "결과를 파일로도 저장할까요?", "saveNo": "아니요, 화면의 표면 충분합니다",
+		"updAsk": "새 버전 v%s이(가) 있습니다(현재 v%s). 지금 업데이트할까요?", "updNote": "vps2cloud v%s 사용 가능: vps2cloud --update 로 업데이트", "updDone": "v%s(으)로 업데이트했습니다", "updLatest": "vps2cloud v%s 는 최신 버전입니다", "updFail": "업데이트 실패: %s", "updPerm": "%s 을(를) 바꿀 권한이 없습니다. sudo 로 실행하거나 다시 설치하세요: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "새 버전을 사용하려면 vps2cloud 를 다시 실행하세요.",
 	},
 	"es": {
 		"title": "VPS2Cloud %s · latencia desde esta máquina a %d regiones en la nube", "machine": "Esta máquina: %s · Enter deja el [predeterminado] · Ctrl-C sale",
@@ -195,6 +202,7 @@ var texts = map[string]map[string]string{
 		"back": "Atrás", "exit": "Salir", "answered": "Respondieron %d de %d regiones%s", "took": "Duración %s · endpoints: %s",
 		"shortFail": "el servicio de enlaces cortos no respondió; se muestra el enlace completo",
 		"saved":     "Guardado:", "saveQ": "¿Guardar también el resultado en un archivo?", "saveNo": "No, basta con la tabla en pantalla",
+		"updAsk": "Hay una versión nueva, v%s (tienes v%s). ¿Actualizar ahora?", "updNote": "vps2cloud v%s disponible: ejecuta vps2cloud --update", "updDone": "Actualizado a v%s", "updLatest": "vps2cloud v%s es la última versión", "updFail": "no se pudo actualizar: %s", "updPerm": "sin permiso para reemplazar %s; usa sudo o reinstala: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Vuelve a ejecutar vps2cloud para usar la versión nueva.",
 	},
 	"fr": {
 		"title": "VPS2Cloud %s · latence de cette machine vers %d régions cloud", "machine": "Cette machine : %s · Entrée garde la [valeur par défaut] · Ctrl-C quitte",
@@ -212,6 +220,7 @@ var texts = map[string]map[string]string{
 		"back": "Retour", "exit": "Quitter", "answered": "%d régions sur %d ont répondu%s", "took": "Durée %s · endpoints : %s",
 		"shortFail": "le service de liens courts n’a pas répondu ; lien complet affiché",
 		"saved":     "Enregistré :", "saveQ": "Enregistrer aussi le résultat dans un fichier ?", "saveNo": "Non, le tableau à l’écran suffit",
+		"updAsk": "La version v%s est disponible (vous avez v%s). Mettre à jour maintenant ?", "updNote": "vps2cloud v%s est disponible : lancez vps2cloud --update", "updDone": "Mis à jour en v%s", "updLatest": "vps2cloud v%s est la dernière version", "updFail": "échec de la mise à jour : %s", "updPerm": "pas le droit de remplacer %s ; utilisez sudo ou réinstallez : curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Relancez vps2cloud pour utiliser la nouvelle version.",
 	},
 	"de": {
 		"title": "VPS2Cloud %s · Latenz von diesem Rechner zu %d Cloud-Regionen", "machine": "Dieser Rechner: %s · Enter übernimmt den [Standard] · Strg-C beendet",
@@ -229,6 +238,7 @@ var texts = map[string]map[string]string{
 		"back": "Zurück", "exit": "Beenden", "answered": "%d von %d Regionen haben geantwortet%s", "took": "Dauer %s · Endpunkte: %s",
 		"shortFail": "der Kurzlink-Dienst hat nicht geantwortet; der vollständige Link wird angezeigt",
 		"saved":     "Gespeichert:", "saveQ": "Ergebnis zusätzlich als Datei speichern?", "saveNo": "Nein, die Tabelle am Bildschirm reicht",
+		"updAsk": "Version v%s ist da (du hast v%s). Jetzt aktualisieren?", "updNote": "vps2cloud v%s ist verfügbar: vps2cloud --update ausführen", "updDone": "Auf v%s aktualisiert", "updLatest": "vps2cloud v%s ist die neueste Version", "updFail": "Aktualisierung fehlgeschlagen: %s", "updPerm": "keine Berechtigung, %s zu ersetzen; mit sudo ausführen oder neu installieren: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Starte vps2cloud erneut, um die neue Version zu nutzen.",
 	},
 	"pt": {
 		"title": "VPS2Cloud %s · latência desta máquina para %d regiões de nuvem", "machine": "Esta máquina: %s · Enter mantém o [padrão] · Ctrl-C sai",
@@ -246,6 +256,7 @@ var texts = map[string]map[string]string{
 		"back": "Voltar", "exit": "Sair", "answered": "%d de %d regiões responderam%s", "took": "Duração %s · endpoints: %s",
 		"shortFail": "o serviço de links curtos não respondeu; mostrando o link completo",
 		"saved":     "Salvo:", "saveQ": "Salvar também o resultado num arquivo?", "saveNo": "Não, a tabela na tela basta",
+		"updAsk": "Há uma versão nova, v%s (você tem v%s). Atualizar agora?", "updNote": "vps2cloud v%s disponível: execute vps2cloud --update", "updDone": "Atualizado para v%s", "updLatest": "vps2cloud v%s é a versão mais recente", "updFail": "falha ao atualizar: %s", "updPerm": "sem permissão para substituir %s; use sudo ou reinstale: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Execute vps2cloud de novo para usar a versão nova.",
 	},
 	"ru": {
 		"title": "VPS2Cloud %s · задержка от этой машины до %d облачных регионов", "machine": "Эта машина: %s · Enter оставляет [по умолчанию] · Ctrl-C — выход",
@@ -263,5 +274,6 @@ var texts = map[string]map[string]string{
 		"back": "Назад", "exit": "Выход", "answered": "Ответили %d из %d регионов%s", "took": "Заняло %s · эндпоинты: %s",
 		"shortFail": "сервис коротких ссылок не ответил; показана полная ссылка",
 		"saved":     "Сохранено:", "saveQ": "Сохранить результат ещё и в файл?", "saveNo": "Нет, достаточно таблицы на экране",
+		"updAsk": "Вышла версия v%s (у вас v%s). Обновить сейчас?", "updNote": "Доступна vps2cloud v%s: выполните vps2cloud --update", "updDone": "Обновлено до v%s", "updLatest": "vps2cloud v%s — последняя версия", "updFail": "не удалось обновить: %s", "updPerm": "нет прав заменить %s; запустите через sudo или переустановите: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Запустите vps2cloud снова, чтобы использовать новую версию.",
 	},
 }
