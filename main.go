@@ -75,8 +75,38 @@ type opts struct {
 func main() {
 	// net/http logs HTTP/2 frames it does not handle (ORIGIN frames from Cloudflare and Google); none matter here
 	log.SetOutput(io.Discard)
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	args := os.Args[1:]
+	if len(args) > 0 || !isTTY(os.Stdin) || !isTTY(os.Stdout) {
+		os.Exit(run(args, os.Stdout, os.Stderr))
+	}
+	// no options in a terminal: the menu, then one run per IP family chosen
+	l, err := loadList("", false, userAgent())
+	if err != nil {
+		os.Exit(run(args, os.Stdout, os.Stderr))
+	}
+	preloaded = l
+	runs := wizard(os.Stdin, os.Stdout, l)
+	if runs == nil {
+		os.Exit(130)
+	}
+	code := 0
+	for i, a := range runs {
+		if i > 0 {
+			fmt.Fprintln(os.Stdout)
+		}
+		if c := run(a, os.Stdout, os.Stderr); c != 0 {
+			code = c
+		}
+	}
+	fmt.Fprintln(os.Stdout, "\nTo run the same test without the menu:")
+	for _, a := range runs {
+		fmt.Fprintln(os.Stdout, "  "+commandLine(a))
+	}
+	os.Exit(code)
 }
+
+// preloaded is the endpoint list the menu already fetched, so a run doesn't fetch (and count) it again.
+var preloaded *List
 
 func run(args []string, stdout, stderr io.Writer) int {
 	var o opts
@@ -175,7 +205,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	ua := userAgent()
-	list, err := loadList(o.endpoints, o.offline, ua)
+	list, err := preloaded, error(nil)
+	if list == nil || o.endpoints != "" || o.offline {
+		list, err = loadList(o.endpoints, o.offline, ua)
+	}
 	if err != nil {
 		fmt.Fprintf(stderr, "vps2cloud: endpoint list: %v\n", err)
 		return 1

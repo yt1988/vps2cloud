@@ -2,11 +2,12 @@
 # VPS2Cloud installer: picks the build for this OS and CPU, downloads it from the GitHub release, checks its SHA-256
 # against the release's checksums.txt, and installs it as /usr/local/bin/vps2cloud (or ~/.local/bin when not root).
 #
-#   curl -fsSL https://v2c.1ms.dog/i | sh                  install
+#   curl -fsSL https://v2c.1ms.dog/i | sh                  install, then start the test with its menu
+#   curl -fsSL https://v2c.1ms.dog/i | sh -s -- --no-run    install only
 #   curl -fsSL https://v2c.1ms.dog/i | sh -s -- run [ARGS]  download to a temp dir, run once, delete
 #
 # Environment: V2C_VERSION (a tag such as v0.1.0; default latest), V2C_DIR (install directory),
-# V2C_BASE (download base URL, for a mirror that copies the release files).
+# V2C_BASE (download base URL, for a mirror that copies the release files), V2C_NO_RUN=1 (install only).
 set -eu
 
 REPO="yt1988/vps2cloud"
@@ -57,7 +58,12 @@ chmod +x "$tmp/vps2cloud"
 
 if [ "${1:-}" = run ]; then
   shift
-  "$tmp/vps2cloud" "$@"
+  # with no options it shows the menu, which reads the keyboard from /dev/tty (this script's input is the pipe)
+  if [ $# -eq 0 ] && { : </dev/tty; } 2>/dev/null; then
+    "$tmp/vps2cloud" </dev/tty
+  else
+    "$tmp/vps2cloud" "$@"
+  fi
   exit $?
 fi
 
@@ -69,4 +75,11 @@ mv "$tmp/vps2cloud" "$dir/vps2cloud"
 ln -sf "$dir/vps2cloud" "$dir/v2c" 2>/dev/null || true
 say "Installed $("$dir/vps2cloud" --version) to $dir/vps2cloud (also as v2c)"
 case ":$PATH:" in *":$dir:"*) ;; *) say "Add $dir to your PATH to run it by name." ;; esac
-say "Run: vps2cloud            (all regions, TCP)   vps2cloud --help   for options"
+say "Run it again any time with: vps2cloud   (vps2cloud --help lists the options)"
+
+# Start the test right away with its menu. Piped into sh, this script's input is the script itself, so the menu reads
+# the keyboard from /dev/tty; without a terminal (CI, cron) it only installs.
+if [ "${1:-}" != "--no-run" ] && [ -z "${V2C_NO_RUN:-}" ] && { : </dev/tty; } 2>/dev/null; then
+  say ""
+  exec "$dir/vps2cloud" </dev/tty
+fi
