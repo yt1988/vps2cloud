@@ -18,7 +18,8 @@ if (prompt) text = "\x1b[2m$\x1b[0m " + prompt + "\n" + text;
 const lines = text.split("\n");
 let cols = 0;
 const rows = lines.map(line => {
-  // runs of text with one style; each run is split where the cell width changes so every piece is placed by column
+  // words with one style, each placed at its own column and given its exact width: viewers collapse spaces and use
+  // their own fonts, so nothing may depend on either
   const out = [];
   let st = { bold: false, dim: false, color: null }, col = 0;
   for (const part of line.split(/(\x1b\[[0-9;]*m)/)) {
@@ -33,10 +34,11 @@ const rows = lines.map(line => {
       continue;
     }
     let buf = "", start = col, w = null;
-    const flush = () => { if (buf.trim()) out.push({ col: start, text: buf, ...st }); buf = ""; };
+    const flush = () => { if (buf) out.push({ col: start, text: buf, ...st }); buf = ""; w = null; };
     for (const ch of part) {
       const cw = wide(ch) ? 2 : 1;
-      if (w !== null && cw !== w) { flush(); start = col; }
+      if (ch === " ") { flush(); col += 1; continue; }
+      if (w !== null && cw !== w) flush();
       if (!buf) start = col;
       w = cw; buf += ch; col += cw;
     }
@@ -57,7 +59,7 @@ writeFileSync(outFile, `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" hei
 <rect width="${W}" height="${H}" rx="10" fill="${BG}"/>
 <path d="M0 10a10 10 0 0 1 10-10h${W - 20}a10 10 0 0 1 10 10v18H0z" fill="${BAR}"/>
 <circle cx="18" cy="14" r="5" fill="#ef4444"/><circle cx="34" cy="14" r="5" fill="#f59e0b"/><circle cx="50" cy="14" r="5" fill="#22c55e"/>
-<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 'Noto Sans Mono CJK SC', 'Microsoft YaHei UI', monospace" font-size="${SIZE}" xml:space="preserve">
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 'Noto Sans Mono CJK SC', 'Microsoft YaHei UI', monospace" font-size="${SIZE}">
 ${body}
 </g>
 </svg>
