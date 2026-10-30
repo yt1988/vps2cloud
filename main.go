@@ -291,6 +291,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 	orig := make(chan *Origin, 1)
 	go func() { orig <- origin(fams[0], ua) }()
 	progressColor := !o.noColor && os.Getenv("NO_COLOR") == "" && isTTY(stderr)
+	// in a color terminal wide enough, a running Shiba; otherwise one line of text
+	var dog *runner
+	if showProgress && progressColor {
+		if f, ok := stderr.(*os.File); ok {
+			dog = startRunner(stderr, termCols(f))
+		}
+	}
 	progress := func(phase string) func(done, total int, j Job) {
 		if !showProgress {
 			return nil
@@ -299,6 +306,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 			fam := ""
 			if len(fams) > 1 {
 				fam = " IPv" + strconv.Itoa(j.Fam)
+			}
+			if dog != nil {
+				dog.update(done, total, fmt.Sprintf("%s  %s%s", cBold+strconv.Itoa(done)+"/"+strconv.Itoa(total)+cReset, j.E.ID, cDim+fam+cReset))
+				return
 			}
 			line := fmt.Sprintf("%s %d/%d  %s%s", phase, done, total, j.E.ID, fam)
 			if progressColor {
@@ -309,7 +320,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	res := pl.Run(ctx, eps, progress(T("measuring")))
-	if showProgress {
+	if dog != nil {
+		dog.finish()
+	} else if showProgress {
 		fmt.Fprint(stderr, "\r\x1b[K")
 	}
 	if ctx.Err() != nil {
