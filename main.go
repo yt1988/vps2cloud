@@ -91,6 +91,10 @@ type opts struct {
 func main() {
 	// net/http logs HTTP/2 frames it does not handle (ORIGIN frames from Cloudflare and Google); none matter here
 	log.SetOutput(io.Discard)
+	// old Windows consoles show color codes as text until asked to read them; where that fails, no colors
+	if !enableVT() {
+		os.Setenv("NO_COLOR", "1")
+	}
 	// language: --lang (read in run), then V2C_LANG, then the saved choice, then English
 	askLang := true
 	if l := knownLang(os.Getenv("V2C_LANG")); l != "" {
@@ -325,9 +329,21 @@ func run(args []string, stdout, stderr io.Writer) int {
 	} else if showProgress {
 		fmt.Fprint(stderr, "\r\x1b[K")
 	}
-	if ctx.Err() != nil {
-		fmt.Fprintln(stderr, "vps2cloud: interrupted")
-		return 130
+	// interrupted: show the regions measured so far, then exit with 130 as an interrupted program does
+	interrupted := ctx.Err() != nil
+	if interrupted {
+		kept := res[:0]
+		for _, r := range res {
+			if r != nil {
+				kept = append(kept, r)
+			}
+		}
+		if len(kept) == 0 {
+			fmt.Fprintln(stderr, "vps2cloud: interrupted")
+			return 130
+		}
+		fmt.Fprintln(stderr, paint(cYellow, "vps2cloud: "+T("partial", len(kept), len(res))))
+		res = kept
 	}
 	// one section per family; regions without an IPv6 address are left out of the IPv6 one and counted instead
 	var secs []Section
@@ -398,6 +414,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 			}
 			fmt.Fprintf(stdout, "%s %s\n", paint(cBold, T("saved")), paint(cGreen, name))
 		}
+	}
+	if interrupted {
+		return 130
 	}
 	if o.maxMS > 0 {
 		best := -1.0

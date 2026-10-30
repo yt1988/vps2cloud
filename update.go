@@ -17,18 +17,45 @@ import (
 	"time"
 )
 
-// Updates. The latest release is read from GitHub's redirect for /releases/latest (no API call, no rate limit), at
-// most once an hour, remembered in the config file. In a terminal the tool offers the update and, when the user
+// Updates. The latest release is read at most once an hour, remembered in the config file: from v2c.1ms.dog/v, which
+// asks GitHub and caches the answer, or else from GitHub's redirect for /releases/latest. Release files come the same
+// way: v2c.1ms.dog/dl/<tag>/ passes GitHub's on (and keeps them), since GitHub is often unreachable from mainland China. In a terminal the tool offers the update and, when the user
 // agrees, downloads the build for this system, checks it against the release's checksums.txt, puts it in place of the
 // running binary and starts it again with the same options. Without a terminal it only mentions the new version.
 // --offline, V2C_NO_UPDATE=1 and development builds skip all of it; --update checks and updates right away.
 
-var releaseURL = "https://github.com/yt1988/vps2cloud/releases"
+var (
+	releaseURL = "https://github.com/yt1988/vps2cloud/releases"
+	mirrorURL  = "https://v2c.1ms.dog"
+)
 
 const checkEvery = time.Hour
 
 func latestVersion(ua string) (string, error) {
-	cl := &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	if v, err := mirrorVersion(ua); err == nil {
+		return v, nil
+	}
+	return githubVersion(ua)
+}
+
+func mirrorVersion(ua string) (string, error) {
+	req, _ := http.NewRequest("GET", mirrorURL+"/v", nil)
+	req.Header.Set("User-Agent", ua)
+	res, err := (&http.Client{Timeout: 2 * time.Second}).Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	b, _ := io.ReadAll(io.LimitReader(res.Body, 64))
+	v := strings.TrimPrefix(strings.TrimSpace(string(b)), "v")
+	if res.StatusCode != 200 || parseVersion(v) == nil {
+		return "", fmt.Errorf("%s/v: %s", mirrorURL, res.Status)
+	}
+	return v, nil
+}
+
+func githubVersion(ua string) (string, error) {
+	cl := &http.Client{Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	req, _ := http.NewRequest("HEAD", releaseURL+"/latest", nil)
 	req.Header.Set("User-Agent", ua)
 	res, err := cl.Do(req)
@@ -103,15 +130,23 @@ func download(url, ua string, max int64) ([]byte, error) {
 
 var errPermission = errors.New("permission")
 
+// fetchRelease gets this system's build of release ver and the release's checksums, from the mirror or else GitHub.
+func fetchRelease(ver, name, ua string) (bin, sums []byte, err error) {
+	for _, base := range []string{mirrorURL + "/dl/v" + ver + "/", releaseURL + "/download/v" + ver + "/"} {
+		if bin, err = download(base+name, ua, 64<<20); err != nil {
+			continue
+		}
+		if sums, err = download(base+"checksums.txt", ua, 64<<10); err == nil {
+			return bin, sums, nil
+		}
+	}
+	return nil, nil, err
+}
+
 // selfUpdate replaces the running binary with release ver and returns its path.
 func selfUpdate(ver, ua string) (string, error) {
-	base := releaseURL + "/download/v" + ver + "/"
 	name := assetName()
-	bin, err := download(base+name, ua, 64<<20)
-	if err != nil {
-		return "", err
-	}
-	sums, err := download(base+"checksums.txt", ua, 64<<10)
+	bin, sums, err := fetchRelease(ver, name, ua)
 	if err != nil {
 		return "", err
 	}

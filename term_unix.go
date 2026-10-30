@@ -16,3 +16,6 @@ func termCols(f *os.File) int {
 	}
 	return int(ws.Col)
 }
+
+// enableVT is for Windows; other terminals read color codes anyway.
+func enableVT() bool { return true }

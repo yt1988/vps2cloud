@@ -57,8 +57,25 @@ func TestLatestVersion(t *testing.T) {
 	old := releaseURL
 	releaseURL = srv.URL + "/releases"
 	defer func() { releaseURL = old }()
-	v, err := latestVersion("test")
+	v, err := githubVersion("test")
 	if err != nil || v != "0.4.2" {
-		t.Fatalf("latestVersion = %q, %v", v, err)
+		t.Fatalf("githubVersion = %q, %v", v, err)
+	}
+}
+
+func TestMirrorVersion(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Write([]byte("0.4.3\n"))
+	}))
+	defer srv.Close()
+	old := mirrorURL
+	mirrorURL = srv.URL
+	defer func() { mirrorURL = old }()
+	if v, err := mirrorVersion("test"); err != nil || v != "0.4.3" {
+		t.Fatalf("mirrorVersion = %q, %v", v, err)
 	}
 }

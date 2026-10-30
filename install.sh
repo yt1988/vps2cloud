@@ -1,6 +1,7 @@
 #!/bin/sh
-# VPS2Cloud installer: picks the build for this OS and CPU, downloads it from the GitHub release, checks its SHA-256
-# against the release's checksums.txt, and installs it as /usr/local/bin/vps2cloud (or ~/.local/bin when not root).
+# VPS2Cloud installer: picks the build for this OS and CPU, downloads it from v2c.1ms.dog (which passes the GitHub
+# release files on, for places where GitHub is slow or blocked) or else from GitHub itself, checks its SHA-256 against
+# the release's checksums.txt, and installs it as /usr/local/bin/vps2cloud (or ~/.local/bin when not root).
 #
 #   curl -fsSL https://v2c.1ms.dog/i | sh                  install, then start the test with its menu
 #   curl -fsSL https://v2c.1ms.dog/i | sh -s -- -p aws      install, then run with these options (no menu)
@@ -8,15 +9,15 @@
 #   curl -fsSL https://v2c.1ms.dog/i | sh -s -- run [ARGS]  download to a temp dir, run once, delete
 #
 # Environment: V2C_VERSION (a tag such as v0.1.0; default latest), V2C_DIR (install directory),
-# V2C_BASE (download base URL, for a mirror that copies the release files), V2C_NO_RUN=1 (install only).
+# V2C_BASE (download base URL instead of v2c.1ms.dog and GitHub), V2C_NO_RUN=1 (install only).
 set -eu
 
 REPO="yt1988/vps2cloud"
 VERSION="${V2C_VERSION:-latest}"
 if [ "$VERSION" = latest ]; then
-  BASE="${V2C_BASE:-https://github.com/$REPO/releases/latest/download}"
+  BASES="${V2C_BASE:-https://v2c.1ms.dog/dl/latest https://github.com/$REPO/releases/latest/download}"
 else
-  BASE="${V2C_BASE:-https://github.com/$REPO/releases/download/$VERSION}"
+  BASES="${V2C_BASE:-https://v2c.1ms.dog/dl/$VERSION https://github.com/$REPO/releases/download/$VERSION}"
 fi
 
 say() { printf '%s\n' "$*" >&2; }
@@ -45,8 +46,12 @@ else die "needs curl or wget"; fi
 tmp=$(mktemp -d 2>/dev/null || mktemp -d -t vps2cloud)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 say "Downloading $file ($VERSION)…"
-fetch "$BASE/$file" "$tmp/vps2cloud" || die "download failed: $BASE/$file"
-fetch "$BASE/checksums.txt" "$tmp/checksums.txt" || die "download failed: $BASE/checksums.txt"
+got_it=
+for base in $BASES; do
+  if fetch "$base/$file" "$tmp/vps2cloud" && fetch "$base/checksums.txt" "$tmp/checksums.txt"; then got_it=1; break; fi
+  say "  not from $base, trying the next source"
+done
+[ -n "$got_it" ] || die "download failed from: $BASES"
 
 want=$(grep " $file\$" "$tmp/checksums.txt" | cut -d' ' -f1)
 [ -n "$want" ] || die "no checksum for $file"

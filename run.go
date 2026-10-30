@@ -125,7 +125,11 @@ func (pl Plan) Run(ctx context.Context, eps []Endpoint, progress func(done, tota
 			defer wg.Done()
 			vendor[j.E.Vendor] <- struct{}{}
 			global <- struct{}{}
-			out[i] = pl.one(ctx, j.E, j.Fam)
+			r := pl.one(ctx, j.E, j.Fam)
+			if ctx.Err() != nil {
+				r = nil // cut short by an interrupt (or never started): not a measurement
+			}
+			out[i] = r
 			<-global
 			<-vendor[j.E.Vendor]
 			mu.Lock()
