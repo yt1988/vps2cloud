@@ -58,7 +58,7 @@ curl -fsSL https://v2c.1ms.dog/i | sh -s -- run
 
 ### 更新
 
-vps2cloud 最多每 12 小时向 GitHub 查一次最新版本。在终端里运行时，发现新版本会询问是否更新（`发现新版本 v0.5.0（当前 v0.4.0），现在更新吗？[Y/n]`）；确认后下载适合你系统的版本，用 Release 里的 `checksums.txt` 校验，替换自身，然后用同样的参数继续运行。没有终端时只打印一行提示。`vps2cloud --update` 立即更新；`--offline` 或 `V2C_NO_UPDATE=1` 关闭检查。如果程序装在你没有写权限的位置（比如没有 root 时的 `/usr/local/bin`），用 `sudo` 运行更新，或重新安装。
+vps2cloud 最多每小时向 GitHub 查一次最新版本。在终端里运行时，发现新版本会询问是否更新（`发现新版本 v0.5.0（当前 v0.4.0），现在更新吗？[Y/n]`）；确认后下载适合你系统的版本，用 Release 里的 `checksums.txt` 校验，替换自身，然后用同样的参数继续运行。没有终端时只打印一行提示。`vps2cloud --update` 立即更新；`--offline` 或 `V2C_NO_UPDATE=1` 关闭检查。如果程序装在你没有写权限的位置（比如没有 root 时的 `/usr/local/bin`），用 `sudo` 运行更新，或重新安装。
 
 ## 用法
 
@@ -117,7 +117,7 @@ ICMP 需要 root、`CAP_NET_RAW`（`sudo setcap cap_net_raw+ep $(command -v vps2
 - **节点清单**：从 `v2c.1ms.dog` 获取（失败时改用 `m2c.1ms.dog`，再失败就用程序内置的清单）。运行次数就是靠这个请求统计的：它的 User-Agent 只写了 `vps2cloud/<版本> (<系统>/<架构>[; ci])`，不包含这台机器的任何其他信息。加 `--offline` 就不发这个请求。
 - **Cloudflare 的 `/meta` 和 ident.me**：用来识别测试所在的网络（城市、运营商、ASN），显示在「出口」那一行。
 - **短链服务** `s.1ms.dog`：把分享链接变短（见下文）。
-- **检查更新**：最多每 12 小时请求一次 `github.com/yt1988/vps2cloud/releases/latest`（见[更新](#更新)）。加 `--offline` 或 `V2C_NO_UPDATE=1` 就不检查。
+- **检查更新**：最多每小时请求一次 `github.com/yt1988/vps2cloud/releases/latest`（见[更新](#更新)）。加 `--offline` 或 `V2C_NO_UPDATE=1` 就不检查。
 
 分享链接是短链，比如 `https://s.1ms.dog/9eeaap`。它指向完整链接，结果就在完整链接里：各区域的数值和「出口」那一行（城市、运营商），永远不包含 IP 地址。为了生成短链，完整链接会**永久保存**在 `s.1ms.dog`（1ms.dog 部署在 Cloudflare 上的服务）上，方便以后随时打开；同样的结果总是得到同一个短链。除此之外不上传任何东西。
 

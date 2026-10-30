@@ -18,14 +18,14 @@ import (
 )
 
 // Updates. The latest release is read from GitHub's redirect for /releases/latest (no API call, no rate limit), at
-// most every 12 hours, remembered in the config file. In a terminal the tool offers the update and, when the user
+// most once an hour, remembered in the config file. In a terminal the tool offers the update and, when the user
 // agrees, downloads the build for this system, checks it against the release's checksums.txt, puts it in place of the
 // running binary and starts it again with the same options. Without a terminal it only mentions the new version.
 // --offline, V2C_NO_UPDATE=1 and development builds skip all of it; --update checks and updates right away.
 
 var releaseURL = "https://github.com/yt1988/vps2cloud/releases"
 
-const checkEvery = 12 * time.Hour
+const checkEvery = time.Hour
 
 func latestVersion(ua string) (string, error) {
 	cl := &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
