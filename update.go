@@ -172,10 +172,25 @@ func readAnswer() string {
 	return strings.TrimSpace(b.String())
 }
 
+// justLooking tells whether the options only ask for the version, the help or the list, which shouldn't stop to
+// offer an update.
+func justLooking(args []string) bool {
+	for _, a := range args {
+		if !strings.HasPrefix(a, "-") {
+			continue // a value, such as -r list
+		}
+		switch strings.TrimLeft(a, "-") {
+		case "v", "version", "h", "help", "list":
+			return true
+		}
+	}
+	return false
+}
+
 // checkUpdate runs before anything else. It returns an exit code when the program should stop (after --update).
 func checkUpdate(args []string, ua string) (int, bool) {
 	force := len(args) == 1 && args[0] == "--update"
-	if !force && (parseVersion(version) == nil || os.Getenv("V2C_NO_UPDATE") != "" || contains(args, "--offline") || contains(args, "-offline")) {
+	if !force && (parseVersion(version) == nil || os.Getenv("V2C_NO_UPDATE") != "" || contains(args, "--offline") || contains(args, "-offline") || justLooking(args)) {
 		return 0, false
 	}
 	if force && parseVersion(version) == nil {

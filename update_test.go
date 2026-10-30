@@ -26,6 +26,26 @@ func TestNewer(t *testing.T) {
 	}
 }
 
+func TestJustLooking(t *testing.T) {
+	for _, c := range []struct {
+		args []string
+		want bool
+	}{
+		{[]string{"--version"}, true},
+		{[]string{"-v"}, true},
+		{[]string{"-h"}, true},
+		{[]string{"--help"}, true},
+		{[]string{"--list", "-p", "aws"}, true},
+		{[]string{"-p", "aws"}, false},
+		{[]string{"-r", "list"}, false},
+		{nil, false},
+	} {
+		if got := justLooking(c.args); got != c.want {
+			t.Errorf("justLooking(%q) = %v", c.args, got)
+		}
+	}
+}
+
 func TestLatestVersion(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "HEAD" || r.URL.Path != "/releases/latest" {
