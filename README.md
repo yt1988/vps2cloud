@@ -2,9 +2,9 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-Latency, jitter and loss from the machine you run it on to **361 regions of 17 cloud providers**: AWS, Azure, Google Cloud, Oracle, Alibaba Cloud, Tencent Cloud, Huawei Cloud, Akamai (Linode), DigitalOcean, Vultr, Hetzner, OVHcloud, IBM Cloud, Scaleway, Volcengine, Baidu AI Cloud and Naver Cloud.
+Latency, jitter and loss from the machine you run it on to **392 regions of 22 cloud providers**: AWS, Azure, Google Cloud, Oracle, Alibaba Cloud, Tencent Cloud, Huawei Cloud, Akamai (Linode), DigitalOcean, Vultr, Hetzner, OVHcloud, IBM Cloud, Scaleway, Volcengine, Baidu AI Cloud, Naver Cloud, IONOS Cloud, Aruba Cloud, Leaseweb, Gcore and Yandex Cloud.
 
-One static binary, no dependencies, about a minute for all 361 regions. Run it on a VPS, a router or in CI to see which regions are close to it, then share the result as a link or paste it as a Markdown table. It speaks 10 languages.
+One static binary, no dependencies, about a minute for all 392 regions. Run it on a VPS, a router or in CI to see which regions are close to it, then share the result as a link or paste it as a Markdown table. It speaks 10 languages.
 
 It is the server-side companion of [Me2Cloud](https://m2c.1ms.dog), which runs the same test from your browser, and uses the same endpoint list.
 
@@ -16,17 +16,17 @@ It is the server-side companion of [Me2Cloud](https://m2c.1ms.dog), which runs t
 
 ## Fast
 
-**Every region of 17 clouds in about a minute.** Measured on a 1 vCPU, 1 GB VPS in Nuremberg (netcup), October 2026:
+**Every region of 22 clouds in about a minute.** Measured on a 1 vCPU, 1 GB VPS in Nuremberg (netcup), October 2026:
 
 | Run | Samples | Time |
 |---|---:|---:|
-| All 361 regions, TCP, 10 samples each (the default) | 3,610 | **1 min 14 s** |
-| All 361 regions, 5 samples (`-n 5`) | 1,805 | **35 s** |
-| IPv4 and IPv6 in one run (`--ip both`) | 4,570 | **1 min 29 s** |
-| TCP, HTTPS and ICMP side by side (`-m all -n 5`) | 5,415 | **2 min 40 s** |
+| All 392 regions, TCP, 10 samples each (the default) | 3,920 | **1 min 16 s** |
+| All 392 regions, 5 samples (`-n 5`) | 1,960 | **35 s** |
+| IPv4 and IPv6 in one run (`--ip both`) | 4,900 | **1 min 33 s** |
+| TCP, HTTPS and ICMP side by side (`-m all -n 5`) | 5,880 | **2 min 42 s** |
 | A handful of regions (`-p hetzner,aws -r …`, 10 regions) | 50 | **4 s** |
 
-It measures many regions at once (24 hosts in parallel by default) and a TCP sample is a single handshake, with no TLS or HTTP on top. Taking the same 3,610 samples one region after another, with the same pause, would take more than 20 minutes. Speed doesn't cost the providers anything extra: each host still gets one sample at a time with a pause in between (see [Gentle on providers](#gentle-on-providers)).
+It measures many regions at once (24 hosts in parallel by default) and a TCP sample is a single handshake, with no TLS or HTTP on top. Taking the same 3,920 samples one region after another, with the same pause, would take more than 20 minutes. Speed doesn't cost the providers anything extra: each host still gets one sample at a time with a pause in between (see [Gentle on providers](#gentle-on-providers)).
 
 ## Install
 
@@ -131,7 +131,7 @@ Besides the measurement itself, a run makes these requests:
 
 The share link is short, like `https://s.1ms.dog/9eeaap`. It points to the full link, which carries the result itself: the per-region numbers and the "from" line (city, provider), never the IP address. To make the short link, the full link is stored on `s.1ms.dog` (a 1ms.dog service on Cloudflare), permanently, so the result can be opened later; the same result always gets the same short link. Nothing else is uploaded.
 
-To keep the result off any server, use `--long-link`: you get the full link, which carries everything in the URL fragment (`#…`) that browsers do not send to a server (about 2,000 characters for all 361 regions, a few hundred for 20; the format is in [docs/share-format.md](docs/share-format.md)). `--offline` does the same, and when the short link service does not answer, the full link is shown. `--no-link` makes no link at all. The IP is only printed with `--show-ip`.
+To keep the result off any server, use `--long-link`: you get the full link, which carries everything in the URL fragment (`#…`) that browsers do not send to a server (about 2,000 characters for all 392 regions, a few hundred for 20; the format is in [docs/share-format.md](docs/share-format.md)). `--offline` does the same, and when the short link service does not answer, the full link is shown. `--no-link` makes no link at all. The IP is only printed with `--show-ip`.
 
 ## Endpoints
 

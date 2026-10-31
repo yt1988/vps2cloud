@@ -1,4 +1,4 @@
-// VPS2Cloud measures latency, jitter and loss from the machine it runs on to the regions of 17 cloud providers.
+// VPS2Cloud measures latency, jitter and loss from the machine it runs on to the regions of 22 cloud providers.
 // It uses Me2Cloud's endpoint list (github.com/yt1988/me2cloud) and needs nothing but this binary.
 package main
 
@@ -24,7 +24,7 @@ var version = "dev" // set at build time
 // a pause in between, so four at once is as gentle per host as Me2Cloud (two) while a full run takes half as long.
 const vendorCap = 4
 
-const usage = `VPS2Cloud: latency from this machine to 361 regions of 17 cloud providers.
+const usage = `VPS2Cloud: latency from this machine to 392 regions of 22 cloud providers.
 
 Usage: vps2cloud [options]
 
