@@ -139,6 +139,18 @@ func (r *runner) draw() {
 	r.drawn = true
 }
 
+// println prints a finished region's line where the dog is and draws the dog again under it.
+func (r *runner) println(line string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.drawn {
+		fmt.Fprint(r.out, "\x1b[3A\r\x1b[J")
+	}
+	fmt.Fprint(r.out, line+"\n")
+	r.drawn = false
+	r.draw()
+}
+
 // finish stops the animation and clears it, leaving the cursor where the dog started.
 func (r *runner) finish() {
 	close(r.stop)

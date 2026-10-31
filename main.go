@@ -55,7 +55,7 @@ Output
       --no-link           don't print a share link
       --show-ip           include this machine's public IP (never in share links)
       --no-color          plain text (also with NO_COLOR set)
-  -q, --quiet             no progress line
+  -q, --quiet             no progress or per-region lines (on stderr)
       --max-ms N          exit with status 3 when the best median is above N ms
 
 Endpoint list
@@ -302,22 +302,36 @@ func run(args []string, stdout, stderr io.Writer) int {
 			dog = startRunner(stderr, termCols(f))
 		}
 	}
-	progress := func(phase string) func(done, total int, j Job) {
-		if !showProgress {
+	// each region's line as soon as it finishes, above the dog or the progress line; piped or in CI, plain lines only
+	st := newStreamer(list, eps, modes, fams, progressColor)
+	progress := func(phase string) func(done, total int, j Job, r *Result) {
+		if o.quiet {
 			return nil
 		}
-		return func(done, total int, j Job) {
+		return func(done, total int, j Job, r *Result) {
+			if !showProgress {
+				if r != nil {
+					fmt.Fprintln(stderr, st.line(done, total, j, r))
+				}
+				return
+			}
 			fam := ""
 			if len(fams) > 1 {
 				fam = " IPv" + strconv.Itoa(j.Fam)
 			}
 			if dog != nil {
 				dog.update(done, total, fmt.Sprintf("%s  %s%s", cBold+strconv.Itoa(done)+"/"+strconv.Itoa(total)+cReset, j.E.ID, cDim+fam+cReset))
+				if r != nil {
+					dog.println(st.line(done, total, j, r))
+				}
 				return
 			}
 			line := fmt.Sprintf("%s %d/%d  %s%s", phase, done, total, j.E.ID, fam)
 			if progressColor {
 				line = fmt.Sprintf("%s %s  %s%s", cCyan+phase+cReset, cBold+strconv.Itoa(done)+"/"+strconv.Itoa(total)+cReset, j.E.ID, cDim+fam+cReset)
+			}
+			if r != nil {
+				fmt.Fprintln(stderr, "\r\x1b[K"+st.line(done, total, j, r))
 			}
 			fmt.Fprint(stderr, "\r\x1b[K"+line)
 		}
@@ -328,6 +342,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		dog.finish()
 	} else if showProgress {
 		fmt.Fprint(stderr, "\r\x1b[K")
+	}
+	if !o.quiet {
+		fmt.Fprintln(stderr) // the streamed lines end; the sorted table follows
 	}
 	// interrupted: show the regions measured so far, then exit with 130 as an interrupted program does
 	interrupted := ctx.Err() != nil

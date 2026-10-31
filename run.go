@@ -106,7 +106,7 @@ func (pl Plan) jobs(eps []Endpoint) []Job {
 
 // Run measures every endpoint over every family: at most VendorCap hosts of one provider and Concurrency hosts overall
 // at a time (an endpoint's IPv4 and IPv6 hosts count separately), with the modes of one host run one after the other.
-func (pl Plan) Run(ctx context.Context, eps []Endpoint, progress func(done, total int, j Job)) []*Result {
+func (pl Plan) Run(ctx context.Context, eps []Endpoint, progress func(done, total int, j Job, r *Result)) []*Result {
 	jobs := pl.jobs(eps)
 	out := make([]*Result, len(jobs))
 	global := make(chan struct{}, pl.Concurrency)
@@ -135,7 +135,7 @@ func (pl Plan) Run(ctx context.Context, eps []Endpoint, progress func(done, tota
 			mu.Lock()
 			done++
 			if progress != nil {
-				progress(done, len(jobs), j)
+				progress(done, len(jobs), j, r)
 			}
 			mu.Unlock()
 		}()

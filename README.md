@@ -98,7 +98,7 @@ vps2cloud --max-ms 50              # exit status 3 when even the best region is 
 vps2cloud --list                   # providers; --list -p aws lists AWS's regions
 ```
 
-`vps2cloud --help` lists every option. Ctrl-C stops a run and still shows the regions measured so far. Or let [v2c.1ms.dog](https://v2c.1ms.dog) write the command: choose on the page, copy, paste.
+`vps2cloud --help` lists every option. Each region prints a line on stderr the moment it finishes, and the sorted table follows on stdout. Ctrl-C stops a run and still shows the regions measured so far. Or let [v2c.1ms.dog](https://v2c.1ms.dog) write the command: choose on the page, copy, paste.
 
 ### Language
 
