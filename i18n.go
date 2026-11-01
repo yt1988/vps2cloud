@@ -98,6 +98,7 @@ func continentName(c string) string {
 var texts = map[string]map[string]string{
 	"en": {
 		"title": "VPS2Cloud %s · latency from this machine to %d cloud regions", "machine": "This machine: %s · Enter keeps the [default] · Ctrl-C quits",
+		"cdnItem": "CDN test: nearest edge of %d CDNs", "noCDN": "this endpoint list has no CDNs (update vps2cloud, or run without --offline)",
 		"what": "What to test?", "all": "All %d regions", "prov": "Choose providers", "cont": "Choose continents",
 		"langItem": "Language", "choice": "Choice", "num": "Enter a number from 1 to %d.", "pickProv": "Providers (e.g. 1,3 or 2-5)", "pickCont": "Continents (e.g. 1,2)",
 		"pickErr": "Enter one or more numbers from 1 to %d, like 1,3 or 2-5.", "ip": "IP version?", "v4": "IPv4", "v6": "IPv6 (regions without IPv6 are skipped)", "both": "Both in one run (one report, IPv4 and IPv6 sections)",
@@ -117,6 +118,7 @@ var texts = map[string]map[string]string{
 	},
 	"zh-CN": {
 		"title": "VPS2Cloud %s · 测这台机器到 %d 个云区域的延迟", "machine": "本机：%s · 回车选 [默认] · Ctrl-C 退出",
+		"cdnItem": "CDN 测试：%d 家 CDN 的最近节点", "noCDN": "这份节点清单里没有 CDN（请更新 vps2cloud，或去掉 --offline 再运行）",
 		"what": "测什么？", "all": "全部 %d 个区域", "prov": "按厂商选", "cont": "按大洲选",
 		"langItem": "语言", "choice": "选择", "num": "请输入 1 到 %d 之间的数字。", "pickProv": "厂商（如 1,3 或 2-5）", "pickCont": "大洲（如 1,2）",
 		"pickErr": "请输入 1 到 %d 之间的一个或多个数字，如 1,3 或 2-5。", "ip": "IP 版本？", "v4": "IPv4", "v6": "IPv6（没有 IPv6 的区域会跳过）", "both": "两个一起测（一份报告，分 IPv4 和 IPv6 两部分）",
@@ -136,6 +138,7 @@ var texts = map[string]map[string]string{
 	},
 	"zh-TW": {
 		"title": "VPS2Cloud %s · 測這台機器到 %d 個雲端區域的延遲", "machine": "本機：%s · Enter 選 [預設] · Ctrl-C 離開",
+		"cdnItem": "CDN 測試：%d 家 CDN 的最近節點", "noCDN": "這份節點清單裡沒有 CDN（請更新 vps2cloud，或拿掉 --offline 再執行）",
 		"what": "要測什麼？", "all": "全部 %d 個區域", "prov": "依廠商選", "cont": "依大洲選",
 		"langItem": "語言", "choice": "選擇", "num": "請輸入 1 到 %d 之間的數字。", "pickProv": "廠商（如 1,3 或 2-5）", "pickCont": "大洲（如 1,2）",
 		"pickErr": "請輸入 1 到 %d 之間的一個或多個數字，如 1,3 或 2-5。", "ip": "IP 版本？", "v4": "IPv4", "v6": "IPv6（沒有 IPv6 的區域會略過）", "both": "兩個一起測（一份報告，分 IPv4 和 IPv6 兩部分）",
@@ -155,6 +158,7 @@ var texts = map[string]map[string]string{
 	},
 	"ja": {
 		"title": "VPS2Cloud %s · このマシンから %d のクラウドリージョンまでの遅延", "machine": "このマシン：%s · Enter で [既定] · Ctrl-C で終了",
+		"cdnItem": "CDN テスト：%d 社の最寄りエッジ", "noCDN": "このエンドポイント一覧には CDN がありません（vps2cloud を更新するか、--offline を外して実行してください）",
 		"what": "何を測りますか？", "all": "全 %d リージョン", "prov": "プロバイダーを選ぶ", "cont": "大陸を選ぶ",
 		"langItem": "言語", "choice": "選択", "num": "1〜%d の数字を入力してください。", "pickProv": "プロバイダー（例 1,3 や 2-5）", "pickCont": "大陸（例 1,2）",
 		"pickErr": "1〜%d の数字を 1 つ以上入力してください（例 1,3 や 2-5）。", "ip": "IP バージョンは？", "v4": "IPv4", "v6": "IPv6（IPv6 のないリージョンは省略）", "both": "両方を一度に（1 つのレポートに IPv4 と IPv6 の節）",
@@ -174,6 +178,7 @@ var texts = map[string]map[string]string{
 	},
 	"ko": {
 		"title": "VPS2Cloud %s · 이 머신에서 %d개 클라우드 리전까지의 지연", "machine": "이 머신: %s · Enter는 [기본값] · Ctrl-C는 종료",
+		"cdnItem": "CDN 테스트: CDN %d곳의 가장 가까운 엣지", "noCDN": "이 엔드포인트 목록에는 CDN이 없습니다 (vps2cloud를 업데이트하거나 --offline 없이 실행하세요)",
 		"what": "무엇을 측정할까요?", "all": "전체 %d개 리전", "prov": "프로바이더 선택", "cont": "대륙 선택",
 		"langItem": "언어", "choice": "선택", "num": "1부터 %d 사이의 숫자를 입력하세요.", "pickProv": "프로바이더(예: 1,3 또는 2-5)", "pickCont": "대륙(예: 1,2)",
 		"pickErr": "1부터 %d 사이의 숫자를 하나 이상 입력하세요(예: 1,3 또는 2-5).", "ip": "IP 버전은?", "v4": "IPv4", "v6": "IPv6(IPv6가 없는 리전은 건너뜀)", "both": "둘 다 한 번에(한 보고서에 IPv4·IPv6 구역)",
@@ -193,6 +198,7 @@ var texts = map[string]map[string]string{
 	},
 	"es": {
 		"title": "VPS2Cloud %s · latencia desde esta máquina a %d regiones en la nube", "machine": "Esta máquina: %s · Enter deja el [predeterminado] · Ctrl-C sale",
+		"cdnItem": "Prueba de CDN: el nodo más cercano de %d CDN", "noCDN": "esta lista de endpoints no tiene CDN (actualiza vps2cloud o ejecútalo sin --offline)",
 		"what": "¿Qué medir?", "all": "Las %d regiones", "prov": "Elegir proveedores", "cont": "Elegir continentes",
 		"langItem": "Idioma", "choice": "Opción", "num": "Escribe un número del 1 al %d.", "pickProv": "Proveedores (p. ej. 1,3 o 2-5)", "pickCont": "Continentes (p. ej. 1,2)",
 		"pickErr": "Escribe uno o más números del 1 al %d, como 1,3 o 2-5.", "ip": "¿Versión de IP?", "v4": "IPv4", "v6": "IPv6 (se omiten las regiones sin IPv6)", "both": "Ambas en una sola prueba (un informe con secciones IPv4 e IPv6)",
@@ -212,6 +218,7 @@ var texts = map[string]map[string]string{
 	},
 	"fr": {
 		"title": "VPS2Cloud %s · latence de cette machine vers %d régions cloud", "machine": "Cette machine : %s · Entrée garde la [valeur par défaut] · Ctrl-C quitte",
+		"cdnItem": "Test CDN : le nœud le plus proche de %d CDN", "noCDN": "cette liste d’endpoints ne contient pas de CDN (mettez vps2cloud à jour ou lancez-le sans --offline)",
 		"what": "Que mesurer ?", "all": "Les %d régions", "prov": "Choisir des fournisseurs", "cont": "Choisir des continents",
 		"langItem": "Langue", "choice": "Choix", "num": "Entrez un nombre de 1 à %d.", "pickProv": "Fournisseurs (ex. 1,3 ou 2-5)", "pickCont": "Continents (ex. 1,2)",
 		"pickErr": "Entrez un ou plusieurs nombres de 1 à %d, comme 1,3 ou 2-5.", "ip": "Version d’IP ?", "v4": "IPv4", "v6": "IPv6 (les régions sans IPv6 sont ignorées)", "both": "Les deux en un seul test (un rapport, sections IPv4 et IPv6)",
@@ -231,6 +238,7 @@ var texts = map[string]map[string]string{
 	},
 	"de": {
 		"title": "VPS2Cloud %s · Latenz von diesem Rechner zu %d Cloud-Regionen", "machine": "Dieser Rechner: %s · Enter übernimmt den [Standard] · Strg-C beendet",
+		"cdnItem": "CDN-Test: nächster Edge von %d CDNs", "noCDN": "diese Endpunktliste enthält keine CDNs (vps2cloud aktualisieren oder ohne --offline starten)",
 		"what": "Was messen?", "all": "Alle %d Regionen", "prov": "Anbieter wählen", "cont": "Kontinente wählen",
 		"langItem": "Sprache", "choice": "Auswahl", "num": "Gib eine Zahl von 1 bis %d ein.", "pickProv": "Anbieter (z. B. 1,3 oder 2-5)", "pickCont": "Kontinente (z. B. 1,2)",
 		"pickErr": "Gib eine oder mehrere Zahlen von 1 bis %d ein, etwa 1,3 oder 2-5.", "ip": "IP-Version?", "v4": "IPv4", "v6": "IPv6 (Regionen ohne IPv6 werden übersprungen)", "both": "Beide in einem Lauf (ein Bericht mit IPv4- und IPv6-Teil)",
@@ -250,6 +258,7 @@ var texts = map[string]map[string]string{
 	},
 	"pt": {
 		"title": "VPS2Cloud %s · latência desta máquina para %d regiões de nuvem", "machine": "Esta máquina: %s · Enter mantém o [padrão] · Ctrl-C sai",
+		"cdnItem": "Teste de CDN: o nó mais próximo de %d CDNs", "noCDN": "esta lista de endpoints não tem CDNs (atualize o vps2cloud ou rode sem --offline)",
 		"what": "O que medir?", "all": "Todas as %d regiões", "prov": "Escolher provedores", "cont": "Escolher continentes",
 		"langItem": "Idioma", "choice": "Opção", "num": "Digite um número de 1 a %d.", "pickProv": "Provedores (ex. 1,3 ou 2-5)", "pickCont": "Continentes (ex. 1,2)",
 		"pickErr": "Digite um ou mais números de 1 a %d, como 1,3 ou 2-5.", "ip": "Versão do IP?", "v4": "IPv4", "v6": "IPv6 (regiões sem IPv6 são puladas)", "both": "Ambas num só teste (um relatório com seções IPv4 e IPv6)",
@@ -269,6 +278,7 @@ var texts = map[string]map[string]string{
 	},
 	"ru": {
 		"title": "VPS2Cloud %s · задержка от этой машины до %d облачных регионов", "machine": "Эта машина: %s · Enter оставляет [по умолчанию] · Ctrl-C — выход",
+		"cdnItem": "Тест CDN: ближайший узел %d CDN", "noCDN": "в этом списке эндпоинтов нет CDN (обновите vps2cloud или запустите без --offline)",
 		"what": "Что измерить?", "all": "Все %d регионов", "prov": "Выбрать провайдеров", "cont": "Выбрать континенты",
 		"langItem": "Язык", "choice": "Выбор", "num": "Введите число от 1 до %d.", "pickProv": "Провайдеры (напр. 1,3 или 2-5)", "pickCont": "Континенты (напр. 1,2)",
 		"pickErr": "Введите одно или несколько чисел от 1 до %d, например 1,3 или 2-5.", "ip": "Версия IP?", "v4": "IPv4", "v6": "IPv6 (регионы без IPv6 пропускаются)", "both": "Обе за один прогон (один отчёт с разделами IPv4 и IPv6)",

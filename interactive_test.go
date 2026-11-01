@@ -135,15 +135,15 @@ func TestWizardLanguage(t *testing.T) {
 	if !strings.Contains(out.String(), "全部") || !strings.Contains(out.String(), "语言 / Language") || !strings.Contains(out.String(), "0) 退出") {
 		t.Errorf("menu not in Chinese with the bilingual language item and exit:\n%s", out.String())
 	}
-	// from the menu: item 4, then 日本語 (4); the menu comes back in Japanese
+	// from the menu: item 5, then 日本語 (4); the menu comes back in Japanese
 	out.Reset()
-	got = wizard(strings.NewReader(keys(v6, "4", "4", "1", ipKey, "", "")), &out, l, false)
+	got = wizard(strings.NewReader(keys(v6, "5", "4", "1", ipKey, "", "")), &out, l, false)
 	if got == nil || lang != "ja" || loadConfig().Lang != "ja" || !strings.Contains(out.String(), "言語 / Language") {
 		t.Fatalf("menu change: got %q, lang %s, saved %q", got, lang, loadConfig().Lang)
 	}
 	// 0 in the language list goes back without changing it
 	out.Reset()
-	got = wizard(strings.NewReader(keys(v6, "4", "0", "1", ipKey, "", "")), &out, l, false)
+	got = wizard(strings.NewReader(keys(v6, "5", "0", "1", ipKey, "", "")), &out, l, false)
 	if got == nil || lang != "ja" {
 		t.Fatalf("back from the language list: got %q, lang %s", got, lang)
 	}
@@ -165,5 +165,19 @@ func TestTranslationsComplete(t *testing.T) {
 		if len(continentText[l.Code]) != len(continentText["en"]) {
 			t.Errorf("%s: continents", l.Code)
 		}
+	}
+}
+
+func TestWizardCDN(t *testing.T) {
+	tempConfig(t)
+	l, _ := parseList(embeddedList)
+	if len(l.CDNs) == 0 {
+		t.Fatal("the built-in list has no CDNs")
+	}
+	// item 4 goes straight on to the IP version and samples: CDNs have no method to choose
+	var out strings.Builder
+	got := wizard(strings.NewReader(keys(hasRoute(6), "4", ipKey, "")), &out, l, false)
+	if len(got) != 1 || got[0] != "--cdn" || strings.Contains(out.String(), T("how")) {
+		t.Fatalf("got %q:\n%s", got, out.String())
 	}
 }

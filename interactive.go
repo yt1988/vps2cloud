@@ -238,8 +238,17 @@ func wizard(in io.Reader, out io.Writer, l *List, askLang bool) []string {
 		switch step {
 		case stepScope:
 			fmt.Fprintf(out, "\n%s\n%s\n", paint(cBold, T("title", version, len(l.Endpoints))), paint(cDim, T("machine", fams)))
-			m.question(T("what"), []string{T("all", len(l.Endpoints)), T("prov"), T("cont"), langLabel()}, true)
-			switch m.ask(1, 4) {
+			// the CDN item only when the list has CDNs (older lists don't); the language item is always last
+			items := []string{T("all", len(l.Endpoints)), T("prov"), T("cont"), T("cdnItem", len(l.CDNs)), langLabel()}
+			if len(l.CDNs) == 0 {
+				items = append(items[:3], langLabel())
+			}
+			m.question(T("what"), items, true)
+			pick := m.ask(1, len(items))
+			if pick == len(items) {
+				pick = 5
+			}
+			switch pick {
 			case end, back:
 				return nil
 			case 1:
@@ -257,12 +266,18 @@ func wizard(in io.Reader, out io.Writer, l *List, askLang bool) []string {
 					scope, step = sel, stepIP
 				}
 			case 4:
+				// CDNs: the nearest edge of each, measured by HTTPS, so there is no method to ask about
+				scope, mode, step = []string{"--cdn"}, nil, stepIP
+			case 5:
 				if m.chooseLang(false) == end {
 					return nil
 				}
 			}
 			if step == stepIP && !v6 {
 				ip, step = nil, stepMode // no IPv6 here: nothing to ask
+			}
+			if step == stepMode && cdn(scope) {
+				step = stepSamples
 			}
 		case stepIP:
 			m.question(T("ip"), []string{T("v4"), T("v6"), T("both")}, false)
@@ -277,6 +292,9 @@ func wizard(in io.Reader, out io.Writer, l *List, askLang bool) []string {
 				ip, step = []string{"--ip", "6"}, stepMode
 			case 3:
 				ip, step = []string{"--ip", "both"}, stepMode
+			}
+			if step == stepMode && cdn(scope) {
+				step = stepSamples
 			}
 		case stepMode:
 			m.question(T("how"), []string{T("tcp"), T("https"), T("icmp"), T("allModes")}, false)
@@ -304,6 +322,12 @@ func wizard(in io.Reader, out io.Writer, l *List, askLang bool) []string {
 				return nil
 			case back:
 				step = stepMode
+				if cdn(scope) {
+					step = stepIP
+					if !v6 {
+						step = stepScope
+					}
+				}
 			case 1:
 				samples, step = []string{"-n", "5"}, stepSave
 			case 2:
@@ -336,6 +360,8 @@ func wizard(in io.Reader, out io.Writer, l *List, askLang bool) []string {
 	}
 	return args
 }
+
+func cdn(scope []string) bool { return len(scope) == 1 && scope[0] == "--cdn" }
 
 // providers lists the providers, largest first, and returns "-p id,id" or nil for back.
 func (m menu) providers(l *List) []string {

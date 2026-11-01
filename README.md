@@ -88,6 +88,7 @@ vps2cloud -m tcp                   # every region, TCP handshake, 10 samples (an
 vps2cloud -p aws,gcp -r 'eu-*'     # some providers, European regions
 vps2cloud --continent as --top 10  # Asia, the 10 best
 vps2cloud -m all -p hetzner        # TCP, HTTPS and ICMP side by side
+vps2cloud --cdn                    # the nearest edge of 6 CDNs (Cloudflare, Akamai, CloudFront, Google, Fastly, Azure Front Door), by HTTPS
 vps2cloud -6                       # over IPv6 (regions without IPv6 are skipped and counted)
 vps2cloud --ip both                # IPv4 and IPv6 in one run: one report with a part for each, one share link
 vps2cloud --preset game            # mark regions that fit gaming (median ≤ 60 ms, jitter ≤ 10, no loss)

@@ -41,6 +41,9 @@ type Endpoint struct {
 	Method    string `json:"method"`
 	URL6      string `json:"url6"`
 	Continent string `json:"continent"`
+	// a CDN (in the list's "cdns"): one global address answered by the nearest edge, named by itself
+	Name   string `json:"name,omitempty"`
+	NoBust bool   `json:"nobust,omitempty"`
 	// optional, for this tool: false where the host drops ICMP echo; 0 means port 443
 	ICMP    *bool `json:"icmp,omitempty"`
 	TCPPort int   `json:"tcpPort,omitempty"`
@@ -51,6 +54,7 @@ type List struct {
 	Verified  string            `json:"verified"`
 	Vendors   map[string]Vendor `json:"vendors"`
 	Endpoints []Endpoint        `json:"endpoints"`
+	CDNs      []Endpoint        `json:"cdns"`
 	Source    string            `json:"-"`
 }
 
@@ -111,6 +115,36 @@ func fetchList(u, ua string) (*List, error) {
 		return nil, err
 	}
 	return parseList(b)
+}
+
+// VendorName is a provider's name, or a CDN's.
+func (l *List) VendorName(id string) string {
+	if x, ok := l.Vendors[id]; ok && x.Name != "" {
+		return x.Name
+	}
+	for _, c := range l.CDNs {
+		if c.Vendor == id && c.Name != "" {
+			return c.Name
+		}
+	}
+	return id
+}
+
+// SelectCDNs returns the CDNs, or those named in ids ("cloudflare" or "cdn:cloudflare").
+func (l *List) SelectCDNs(ids []string) []Endpoint {
+	if len(ids) == 0 {
+		return l.CDNs
+	}
+	var out []Endpoint
+	for _, c := range l.CDNs {
+		for _, id := range ids {
+			if strings.EqualFold(c.ID, id) || strings.EqualFold(c.ID, "cdn:"+id) {
+				out = append(out, c)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // Host returns the hostname to probe for an IP family: the IPv6-specific URL when there is one.

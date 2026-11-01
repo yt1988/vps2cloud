@@ -129,12 +129,7 @@ func f1(x float64) string {
 	return strconv.FormatFloat(x, 'f', 1, 64)
 }
 
-func (v View) vendorName(id string) string {
-	if x, ok := v.List.Vendors[id]; ok && x.Name != "" {
-		return x.Name
-	}
-	return id
-}
+func (v View) vendorName(id string) string { return v.List.VendorName(id) }
 
 func (v View) shown(s Section) []*Result {
 	if v.Top > 0 && v.Top < len(s.Res) {
@@ -264,9 +259,17 @@ func (v View) table(w io.Writer, s Section) {
 		}
 	}
 	numeric := func(i int) bool { return i == 0 || (i >= 4 && i < len(head)-textTail) }
+	// no city anywhere (CDNs, answered by whichever edge is nearest): leave the column out
+	noCity := true
+	for _, r := range v.shown(s) {
+		noCity = noCity && r.E.City == ""
+	}
 	line := func(cells []string) string {
 		var parts []string
 		for i, cl := range cells {
+			if i == 3 && noCity {
+				continue
+			}
 			parts = append(parts, padText(cl, widths[i], numeric(i)))
 		}
 		return strings.TrimRight(strings.Join(parts, "  "), " ")
@@ -289,7 +292,7 @@ func (v View) table(w io.Writer, s Section) {
 		seen[r.E.Vendor] = true
 		best = append(best, [3]string{v.vendorName(r.E.Vendor), r.E.Region, msc(p.St.Med) + " ms"})
 	}
-	if len(best) > 1 {
+	if len(best) > 1 && len(best) < len(s.Res) { // with one region per provider (CDNs) it would repeat the table
 		fmt.Fprintf(w, "\n%s\n", paint(cBold, T("best")))
 		wn, wr := 0, 0
 		for _, b := range best {

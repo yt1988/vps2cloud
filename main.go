@@ -32,6 +32,8 @@ What to test
   -p, --provider LIST     providers, comma separated (aws,gcp,hetzner …; --list shows all)
   -r, --region LIST       regions by code, id or city, wildcards allowed ("ap-*", "*tokyo*")
       --continent LIST    as, eu, na, sa, oc, me, af
+      --cdn               test the nearest edge of each CDN (Cloudflare, Akamai, CloudFront, Google, Fastly,
+                          Azure Front Door) instead of cloud regions, by HTTPS; -p picks some (-p cloudflare,fastly)
       --country LIST      ISO codes of the region's country (jp,de,us …)
 
 How to measure
@@ -80,7 +82,7 @@ type opts struct {
 	mode, output, sortBy, preset, endpoints, timeout, gap string
 	n, conc, top                                          int
 	v4, v6, noLink, showIP, noColor, quiet, offline, list bool
-	longLink, toStdout                                    bool
+	longLink, toStdout, cdn                               bool
 	file                                                  string
 	maxMS                                                 float64
 	ver                                                   bool
@@ -174,6 +176,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flg(&o.noColor, "no-color")
 	flg(&o.quiet, "q", "quiet")
 	flg(&o.offline, "offline")
+	flg(&o.cdn, "cdn")
 	flg(&o.list, "list")
 	flg(&o.ver, "v", "version")
 	fs.Float64Var(&o.maxMS, "max-ms", 0, "")
@@ -201,6 +204,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	fail := func(format string, a ...any) int { fmt.Fprintf(stderr, "vps2cloud: "+format+"\n", a...); return 2 }
 
+	// CDNs are measured by HTTPS unless -m says otherwise: the edge's answer, on a warm connection
+	if o.cdn {
+		mset := false
+		fs.Visit(func(f *flag.Flag) { mset = mset || f.Name == "m" || f.Name == "mode" })
+		if !mset {
+			o.mode = "https"
+		}
+	}
 	modes, err := parseModes(o.mode)
 	if err != nil {
 		return fail("%v", err)
@@ -261,6 +272,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	eps, err := list.Select(Filter{splitList(o.providers), splitList(o.regions), splitList(o.continents), splitList(o.countries)})
+	if o.cdn {
+		// a share link names regions by their place in the region list, which has no CDNs
+		eps, err, o.noLink = list.SelectCDNs(splitList(o.providers)), nil, true
+		if len(list.CDNs) == 0 {
+			return fail("%s", T("noCDN"))
+		}
+	}
 	if err != nil {
 		return fail("%v", err)
 	}

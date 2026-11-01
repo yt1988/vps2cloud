@@ -88,6 +88,7 @@ vps2cloud -m tcp                   # 全部区域，TCP 握手，10 次采样（
 vps2cloud -p aws,gcp -r 'eu-*'     # 指定厂商，只测欧洲区域
 vps2cloud --continent as --top 10  # 亚洲，只看最快的 10 个
 vps2cloud -m all -p hetzner        # TCP、HTTPS、ICMP 三种并排
+vps2cloud --cdn                    # 测 6 家 CDN（Cloudflare、Akamai、CloudFront、Google、Fastly、Azure Front Door）的最近节点，用 HTTPS
 vps2cloud -6                       # 走 IPv6（没有 IPv6 的区域会跳过并计数）
 vps2cloud --ip both                # IPv4 和 IPv6 一次测完：一份报告分两部分，一个分享链接
 vps2cloud --preset game            # 标出适合打游戏的区域（中位数 ≤ 60 ms、抖动 ≤ 10、不丢包）

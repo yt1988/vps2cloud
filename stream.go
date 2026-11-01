@@ -27,12 +27,7 @@ func newStreamer(list *List, eps []Endpoint, modes []string, fams []int, color b
 	return s
 }
 
-func (s *streamer) vendor(id string) string {
-	if x, ok := s.list.Vendors[id]; ok && x.Name != "" {
-		return x.Name
-	}
-	return id
-}
+func (s *streamer) vendor(id string) string { return s.list.VendorName(id) }
 
 func (s *streamer) paint(code, t string) string {
 	if !s.color || t == "" {
