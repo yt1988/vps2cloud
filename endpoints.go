@@ -232,3 +232,6 @@ func anyMatch(xs []string, f func(string) bool) bool {
 	}
 	return false
 }
+
+// isCDN tells a CDN (from the list's "cdns") from a cloud region.
+func isCDN(e Endpoint) bool { return strings.HasPrefix(e.ID, "cdn:") }

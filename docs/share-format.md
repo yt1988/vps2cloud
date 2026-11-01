@@ -22,4 +22,15 @@ uvarint is the unsigned LEB128 encoding (Go's `binary.AppendUvarint`). Times are
 
 Regions are positions in an endpoint list, not names, so a viewer needs the list the link was made with. The site keeps every list it has served under `/e/<fingerprint>.json`, with the fingerprint in base64url (8 characters), and resolves a link with that file; the current list is usually the right one.
 
+## Format 3: with CDNs
+
+A run that includes CDNs (`--cdn`, the list's `cdns`) writes format 3: the first byte is `3`, and everything is as in format 2 except that each IP family's block is followed by a CDN block. Runs without CDNs still write format 2.
+
+| Field | Encoding |
+|---|---|
+| · CDN count | uvarint, the CDNs with a result |
+| · per CDN, by id | the id as a string (uvarint byte length and UTF-8, such as `cdn:fastly`), then median × 10, (P90 − median) × 10, jitter × 10 as uvarints and loss % as a byte, as for a region |
+
+CDNs are named by id rather than by position, so adding or removing a CDN never changes how an old link reads; a viewer skips an id it does not know. A CDN-only run has a region count of 0 and so no bitmap.
+
 The IP address is never part of a link.

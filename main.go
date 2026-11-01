@@ -273,8 +273,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	eps, err := list.Select(Filter{splitList(o.providers), splitList(o.regions), splitList(o.continents), splitList(o.countries)})
 	if o.cdn {
-		// a share link names regions by their place in the region list, which has no CDNs
-		eps, err, o.noLink = list.SelectCDNs(splitList(o.providers)), nil, true
+		eps, err = list.SelectCDNs(splitList(o.providers)), nil
 		if len(list.CDNs) == 0 {
 			return fail("%s", T("noCDN"))
 		}

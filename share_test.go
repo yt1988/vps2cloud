@@ -21,6 +21,9 @@ type decoded struct {
 	fp            []byte
 	city, cc, org string
 	blocks        []map[int][4]uint64 // per IP family: list index → median×10, (p90−median)×10, jitter×10, loss %
+	format        byte
+	cdns          []map[string][4]uint64 // format 3, per IP family: CDN id → the same numbers
+	regionCount   []uint64
 }
 
 // decodeShare follows docs/share-format.md, as a viewer would.
@@ -44,10 +47,11 @@ func decodeShare(t *testing.T, link string) decoded {
 		return v
 	}
 	str := func() string { b := make([]byte, uv()); io.ReadFull(r, b); return string(b) }
-	if v := byte1(); v != 2 {
-		t.Fatalf("format %d", v)
+	format := byte1()
+	if format != 2 && format != 3 {
+		t.Fatalf("format %d", format)
 	}
-	d := decoded{flags: byte1(), mode: byte1()}
+	d := decoded{format: format, flags: byte1(), mode: byte1()}
 	d.n, d.minutes = uv(), uv()
 	d.fp = make([]byte, 6)
 	io.ReadFull(r, d.fp)
@@ -58,6 +62,7 @@ func decodeShare(t *testing.T, link string) decoded {
 	}
 	for k := 0; k < nblocks; k++ {
 		count := uv()
+		d.regionCount = append(d.regionCount, count)
 		bitmap := make([]byte, (count+7)/8)
 		io.ReadFull(r, bitmap)
 		rows := map[int][4]uint64{}
@@ -67,6 +72,14 @@ func decodeShare(t *testing.T, link string) decoded {
 			}
 		}
 		d.blocks = append(d.blocks, rows)
+		if format == 3 {
+			cdns := map[string][4]uint64{}
+			for k := uv(); k > 0; k-- {
+				id := str()
+				cdns[id] = [4]uint64{uv(), uv(), uv(), uint64(byte1())}
+			}
+			d.cdns = append(d.cdns, cdns)
+		}
 	}
 	if r.Len() != 0 {
 		t.Fatalf("%d bytes left over", r.Len())
@@ -182,5 +195,32 @@ func TestShorten(t *testing.T) {
 	got.URL = ""
 	if _, err := shorten("https://example.com/r#s=abc", "test"); err == nil || got.URL != "" {
 		t.Error("links off 1ms.dog must not be sent")
+	}
+}
+
+func TestShareCDN(t *testing.T) {
+	l, _ := parseList(embeddedList)
+	at := time.Date(2026, 11, 1, 9, 0, 0, 0, time.Local)
+	cdn := func(id string, med float64) *Result {
+		for _, c := range l.CDNs {
+			if c.ID == id {
+				return &Result{E: c, Fam: 4, Modes: map[string]*ModeResult{"https": {St: Stats{N: 10, OK: 10, Med: med, P90: med + 1, Jit: 0.3}}}}
+			}
+		}
+		t.Fatalf("no %s in the built-in list", id)
+		return nil
+	}
+	// a CDN run: format 3, no regions, the CDNs by id; one with no answer is left out
+	failed := &Result{E: l.CDNs[0], Fam: 4, Modes: map[string]*ModeResult{"https": {St: Stats{N: 10}}}}
+	d := decodeShare(t, shareLink([]Section{{Fam: 4, Res: []*Result{cdn("cdn:fastly", 4.3), cdn("cdn:azure", 5.5), failed}}}, l, []string{"https"}, 10, nil, at))
+	if d.format != 3 || d.mode != 1 || len(d.blocks[0]) != 0 || d.regionCount[0] != 0 || len(d.cdns) != 1 || len(d.cdns[0]) != 2 {
+		t.Fatalf("format %d mode %d regions %d cdns %v", d.format, d.mode, len(d.blocks[0]), d.cdns)
+	}
+	if got := d.cdns[0]["cdn:fastly"]; got[0] != 43 || got[1] != 10 || got[2] != 3 {
+		t.Errorf("fastly: %v", got)
+	}
+	// regions only: still format 2, byte for byte the old layout
+	if d := decodeShare(t, shareLink([]Section{{Fam: 4, Res: fakeResults(l, 5, 4)}}, l, []string{"tcp"}, 10, nil, at)); d.format != 2 || d.cdns != nil {
+		t.Fatalf("regions only: format %d", d.format)
 	}
 }

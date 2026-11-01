@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -31,7 +32,11 @@ func siteURL() string {
 // numbers are varints, which keeps a full 361-region run near 2,100 characters instead of 7,500. The list is named by a
 // fingerprint, and the site keeps every list it has served, so old links still decode after regions are added. A run
 // over both IP families carries one block per family. Never the IP.
+//
+// Format 3 is format 2 with a CDN block after each family's regions: CDNs are named by their ids ("cdn:fastly"), not
+// by a place in a list, so CDNs added later leave old links as they were. Runs without CDNs still write format 2.
 const shareFormat = 2
+const shareFormatCDN = 3
 
 const (
 	flagPeak = 1 << iota // 20:00–23:00 local
@@ -68,7 +73,15 @@ func encodeShare(secs []Section, l *List, modes []string, n int, o *Origin, at t
 	} else if secs[0].Fam == 6 {
 		flags |= flagV6
 	}
-	b.Write([]byte{shareFormat, flags, modeCode[modes[0]]})
+	format := byte(shareFormat)
+	for _, s := range secs {
+		for _, r := range s.Res {
+			if isCDN(r.E) {
+				format = shareFormatCDN
+			}
+		}
+	}
+	b.Write([]byte{format, flags, modeCode[modes[0]]})
 	uv(uint64(n))
 	uv(uint64(at.Unix() / 60))
 	b.Write(fingerprint(l))
@@ -80,6 +93,12 @@ func encodeShare(secs []Section, l *List, modes []string, n int, o *Origin, at t
 	str(cc)
 	str(org)
 
+	stats := func(st Stats) {
+		uv(ms10(st.Med))
+		uv(ms10(st.P90 - st.Med))
+		uv(ms10(st.Jit))
+		b.WriteByte(byte(math.Round(st.Loss * 100)))
+	}
 	// one block per family: region count, bitmap of regions with a result, then their numbers in list order
 	for _, s := range secs {
 		byID := map[string]*ModeResult{}
@@ -88,24 +107,46 @@ func encodeShare(secs []Section, l *List, modes []string, n int, o *Origin, at t
 				byID[r.E.ID] = m
 			}
 		}
-		uv(uint64(len(l.Endpoints)))
-		bitmap := make([]byte, (len(l.Endpoints)+7)/8)
-		for i, e := range l.Endpoints {
+		// a CDN-only run (format 3) has no regions: count 0, no bitmap
+		eps := l.Endpoints
+		if format == shareFormatCDN {
+			regions := false
+			for _, r := range s.Res {
+				regions = regions || !isCDN(r.E)
+			}
+			if !regions {
+				eps = nil
+			}
+		}
+		uv(uint64(len(eps)))
+		bitmap := make([]byte, (len(eps)+7)/8)
+		for i, e := range eps {
 			if byID[e.ID] != nil {
 				bitmap[i/8] |= 1 << (i % 8)
 			}
 		}
 		b.Write(bitmap)
-		for _, e := range l.Endpoints {
+		for _, e := range eps {
 			m := byID[e.ID]
 			if m == nil {
 				continue
 			}
-			st := m.St
-			uv(ms10(st.Med))
-			uv(ms10(st.P90 - st.Med))
-			uv(ms10(st.Jit))
-			b.WriteByte(byte(math.Round(st.Loss * 100)))
+			stats(m.St)
+		}
+		// format 3: the CDNs with a result, by id
+		if format == shareFormatCDN {
+			var cdns []*Result
+			for _, r := range s.Res {
+				if m := r.Primary(modes); isCDN(r.E) && m != nil && m.St.OK > 0 {
+					cdns = append(cdns, r)
+				}
+			}
+			sort.Slice(cdns, func(i, j int) bool { return cdns[i].E.ID < cdns[j].E.ID })
+			uv(uint64(len(cdns)))
+			for _, r := range cdns {
+				str(r.E.ID)
+				stats(r.Primary(modes).St)
+			}
 		}
 	}
 
