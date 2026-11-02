@@ -24,11 +24,21 @@ var version = "dev" // set at build time
 // a pause in between, so four at once is as gentle per host as Me2Cloud (two) while a full run takes half as long.
 const vendorCap = 4
 
-const usage = `VPS2Cloud: latency from this machine to 392 regions of 22 cloud providers.
+// usageText is the help: the title, the group headings and the exit codes in the user's language, the options in
+// English. The counts come from the built-in endpoint list.
+func usageText() string {
+	n, v := 0, 0
+	if l, err := parseList(embeddedList); err == nil {
+		n, v = len(l.Endpoints), len(l.Vendors)
+	}
+	return fmt.Sprintf(usageFmt, T("u_title", n, v), T("u_what"), T("u_how"), vendorCap, T("u_out"), T("u_list"), T("u_exit"))
+}
+
+const usageFmt = `%s
 
 Usage: vps2cloud [options]
 
-What to test
+%s
   -p, --provider LIST     providers, comma separated (aws,gcp,hetzner …; --list shows all)
   -r, --region LIST       regions by code, id or city, wildcards allowed ("ap-*", "*tokyo*")
       --continent LIST    as, eu, na, sa, oc, me, af
@@ -36,16 +46,16 @@ What to test
                           Azure Front Door) instead of cloud regions, by HTTPS; -p picks some (-p cloudflare,fastly)
       --country LIST      ISO codes of the region's country (jp,de,us …)
 
-How to measure
+%s
   -m, --mode MODE         tcp (default), https, icmp, or all (comma lists work too: tcp,icmp)
   -n, --count N           samples per region (default 10)
   -4 / -6                 IPv4 (default) or IPv6
       --ip both           IPv4 and IPv6 in one run, reported as two parts of one result
   -t, --timeout DUR       per sample (default 2s)
       --gap DUR           pause between samples to one host (default 250ms)
-  -C, --concurrency N     hosts measured at once (default 24; at most 2 per provider)
+  -C, --concurrency N     hosts measured at once (default 24; at most %d per provider)
 
-Output
+%s
   -o, --output FORMAT     table (default), or md, json, csv: saved to a file in the current folder
                           (vps2cloud-<date>-<time>.<ext>) while the table shows on screen
       --file NAME         the file to save to instead
@@ -60,7 +70,7 @@ Output
   -q, --quiet             no progress or per-region lines (on stderr)
       --max-ms N          exit with status 3 when the best median is above N ms
 
-Endpoint list
+%s
       --offline           use the list built into this binary, no download
       --endpoints FILE    use a local list (Me2Cloud's endpoints.json format)
       --list              show providers and regions, then exit
@@ -75,6 +85,8 @@ whether it runs in CI) and is the only one made besides the measurement itself a
 
 At most once an hour it also asks GitHub for the latest release and, in a terminal, offers to update (the new binary
 is checked against the release checksums). --offline or V2C_NO_UPDATE=1 turns that off.
+
+%s
 `
 
 type opts struct {
@@ -109,7 +121,11 @@ func main() {
 		os.Exit(code)
 	}
 	if len(args) > 0 || !isTTY(os.Stdin) || !isTTY(os.Stdout) {
-		os.Exit(run(args, os.Stdout, os.Stderr))
+		code := run(args, os.Stdout, os.Stderr)
+		if len(args) > 0 && isTTY(os.Stdin) && isTTY(os.Stdout) && !justLooking(args) {
+			rememberRun(args, code)
+		}
+		os.Exit(code)
 	}
 	// no options in a terminal: the menu, then the run it set up
 	l, err := loadList("", false, userAgent())
@@ -118,13 +134,25 @@ func main() {
 	}
 	preloaded = l
 	useColor = os.Getenv("NO_COLOR") == ""
-	chosen := wizard(os.Stdin, os.Stdout, l, askLang)
+	chosen := wizard(os.Stdin, os.Stdout, l, askLang, loadConfig().Last)
 	if chosen == nil {
 		os.Exit(0) // 0 on the first question, or the input ended
 	}
 	code := run(chosen, os.Stdout, os.Stderr)
 	fmt.Fprintf(os.Stdout, "\n%s\n  %s\n", paint(cDim, T("again")), paint(cCyan, commandLine(chosen)))
+	rememberRun(chosen, code)
 	os.Exit(code)
+}
+
+// rememberRun keeps the options of a finished run (also one above --max-ms), so the menu can offer the same test
+// again. Runs cut short, or that failed, are not worth repeating.
+func rememberRun(args []string, code int) {
+	if code != 0 && code != 3 {
+		return
+	}
+	c := loadConfig()
+	c.Last = args
+	saveConfig(c)
 }
 
 // preloaded is the endpoint list the menu already fetched, so a run doesn't fetch (and count) it again.
@@ -133,8 +161,9 @@ var preloaded *List
 func run(args []string, stdout, stderr io.Writer) int {
 	var o opts
 	fs := flag.NewFlagSet("vps2cloud", flag.ContinueOnError)
-	fs.SetOutput(stderr)
-	fs.Usage = func() { fmt.Fprint(stderr, usage) }
+	// the flag package would print its own message and the whole help; a wrong option gets one line instead
+	fs.SetOutput(io.Discard)
+	fs.Usage = func() {}
 	str := func(p *string, def string, names ...string) {
 		for _, n := range names {
 			fs.StringVar(p, n, def, "")
@@ -180,23 +209,25 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flg(&o.list, "list")
 	flg(&o.ver, "v", "version")
 	fs.Float64Var(&o.maxMS, "max-ms", 0, "")
+	// --lang first, so the help and any complaint about the other options come in that language
+	if l := knownLang(langArg(args)); l != "" {
+		lang = l
+	}
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {
+			fmt.Fprint(stdout, usageText())
 			return 0
 		}
+		fmt.Fprintln(stderr, "vps2cloud: "+flagError(fs, err))
 		return 2
 	}
 	if fs.NArg() > 0 {
-		fmt.Fprintf(stderr, "unexpected argument %q (see --help)\n", fs.Arg(0))
+		fmt.Fprintf(stderr, "vps2cloud: unexpected argument %q · %s\n", fs.Arg(0), T("seeHelp"))
 		return 2
 	}
-	if o.lang != "" {
-		l := knownLang(o.lang)
-		if l == "" {
-			fmt.Fprintf(stderr, "vps2cloud: unknown language %q (en, zh-CN, zh-TW, ja, ko, es, fr, de, pt, ru)\n", o.lang)
-			return 2
-		}
-		lang = l
+	if o.lang != "" && knownLang(o.lang) == "" {
+		fmt.Fprintf(stderr, "vps2cloud: unknown language %q (en, zh-CN, zh-TW, ja, ko, es, fr, de, pt, ru)\n", o.lang)
+		return 2
 	}
 	if o.ver {
 		fmt.Fprintf(stdout, "vps2cloud %s %s/%s\n", version, runtime.GOOS, runtime.GOARCH)
@@ -319,8 +350,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 			dog = startRunner(stderr, termCols(f))
 		}
 	}
-	// each region's line as soon as it finishes, above the dog or the progress line; piped or in CI, plain lines only
+	// In a terminal the progress is one line (the count, the region that just finished, the best so far), replaced in
+	// place; the sorted table follows once. Piped or in CI, each region's line is printed as it finishes.
 	st := newStreamer(list, eps, modes, fams, progressColor)
+	var best *Result
 	progress := func(phase string) func(done, total int, j Job, r *Result) {
 		if o.quiet {
 			return nil
@@ -332,23 +365,26 @@ func run(args []string, stdout, stderr io.Writer) int {
 				}
 				return
 			}
+			if r != nil {
+				if p := r.Primary(modes); p != nil && p.St.OK > 0 && (best == nil || p.St.Med < best.Primary(modes).St.Med) {
+					best = r
+				}
+			}
 			fam := ""
 			if len(fams) > 1 {
 				fam = " IPv" + strconv.Itoa(j.Fam)
 			}
+			lead := ""
+			if best != nil {
+				lead = "  ·  " + T("bestSoFar") + ": " + strings.TrimSpace(list.VendorName(best.E.Vendor)+" "+regionText(best.E)) + " " + f1(best.Primary(modes).St.Med) + " ms"
+			}
 			if dog != nil {
-				dog.update(done, total, fmt.Sprintf("%s  %s%s", cBold+strconv.Itoa(done)+"/"+strconv.Itoa(total)+cReset, j.E.ID, cDim+fam+cReset))
-				if r != nil {
-					dog.println(st.line(done, total, j, r))
-				}
+				dog.update(done, total, fmt.Sprintf("%s  %s%s%s", cBold+strconv.Itoa(done)+"/"+strconv.Itoa(total)+cReset, j.E.ID, cDim+fam+cReset, cDim+lead+cReset))
 				return
 			}
-			line := fmt.Sprintf("%s %d/%d  %s%s", phase, done, total, j.E.ID, fam)
+			line := fmt.Sprintf("%s %d/%d  %s%s%s", phase, done, total, j.E.ID, fam, lead)
 			if progressColor {
-				line = fmt.Sprintf("%s %s  %s%s", cCyan+phase+cReset, cBold+strconv.Itoa(done)+"/"+strconv.Itoa(total)+cReset, j.E.ID, cDim+fam+cReset)
-			}
-			if r != nil {
-				fmt.Fprintln(stderr, "\r\x1b[K"+st.line(done, total, j, r))
+				line = fmt.Sprintf("%s %s  %s%s%s", cCyan+phase+cReset, cBold+strconv.Itoa(done)+"/"+strconv.Itoa(total)+cReset, j.E.ID, cDim+fam+cReset, cDim+lead+cReset)
 			}
 			fmt.Fprint(stderr, "\r\x1b[K"+line)
 		}
@@ -360,7 +396,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	} else if showProgress {
 		fmt.Fprint(stderr, "\r\x1b[K")
 	}
-	if !o.quiet {
+	if !o.quiet && !showProgress {
 		fmt.Fprintln(stderr) // the streamed lines end; the sorted table follows
 	}
 	// interrupted: show the regions measured so far, then exit with 130 as an interrupted program does
@@ -397,8 +433,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		secs = append(secs, s)
 	}
 
+	proxy, proxyDetail := proxySigns(res, modes)
 	v := View{Secs: secs, Modes: modes, List: list, Origin: <-orig, ShowIP: o.showIP, N: o.n, At: start, Took: time.Since(start),
-		Preset: o.preset, Top: o.top, SortBy: o.sortBy}
+		Preset: o.preset, Top: o.top, SortBy: o.sortBy, Proxy: proxy, ProxyDetail: proxyDetail}
 	if v.Top < 0 {
 		v.Top = 0
 		if o.output == "md" {
@@ -408,7 +445,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if !o.noLink {
 		// the short link stores the full one on s.1ms.dog; without it (--long-link, --offline, or the service not
 		// answering) the full link carries the result by itself
-		v.LinkFull = shareLink(secs, list, modes, o.n, v.Origin, start)
+		v.LinkFull = shareLink(secs, list, modes, o.n, v.Origin, start, proxy != "")
 		v.Link = v.LinkFull
 		if !o.longLink && !o.offline {
 			if s, err := shorten(v.LinkFull, ua); err == nil {
@@ -466,6 +503,79 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	return 0
+}
+
+// langArg finds --lang in the raw options before they are parsed, so even a parse error can speak that language.
+func langArg(args []string) string {
+	for i, a := range args {
+		name, val, eq := strings.Cut(strings.TrimLeft(a, "-"), "=")
+		if name != "lang" || !strings.HasPrefix(a, "-") {
+			continue
+		}
+		if eq {
+			return val
+		}
+		if i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
+}
+
+// flagError turns the flag package's message into one line in the user's language: an unknown option gets the
+// nearest real one as a suggestion (a prefix such as --cont, or a spelling one or two letters off).
+func flagError(fs *flag.FlagSet, err error) string {
+	msg := err.Error()
+	name, ok := strings.CutPrefix(msg, "flag provided but not defined: -")
+	if !ok {
+		return msg + " · " + T("seeHelp")
+	}
+	name = strings.TrimLeft(name, "-")
+	var names []string
+	fs.VisitAll(func(f *flag.Flag) { names = append(names, f.Name) })
+	out := T("badFlag", name)
+	if s := nearestFlag(name, names); s != "" {
+		out += " · " + T("didYouMean", s)
+	}
+	return out + " · " + T("seeHelp")
+}
+
+func nearestFlag(name string, names []string) string {
+	best, bestD := "", 3
+	for _, n := range names {
+		if len(n) < 2 {
+			continue // the one-letter aliases are never what a typo meant
+		}
+		d := editDistance(name, n)
+		if len(name) >= 3 && strings.HasPrefix(n, name) {
+			d = 0
+		}
+		if d < bestD || d == bestD && len(n) > len(best) {
+			best, bestD = n, d
+		}
+	}
+	return best
+}
+
+func editDistance(a, b string) int {
+	ra, rb := []rune(a), []rune(b)
+	prev := make([]int, len(rb)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(ra); i++ {
+		cur := make([]int, len(rb)+1)
+		cur[0] = i
+		for j := 1; j <= len(rb); j++ {
+			cost := 1
+			if ra[i-1] == rb[j-1] {
+				cost = 0
+			}
+			cur[j] = min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost)
+		}
+		prev = cur
+	}
+	return prev[len(rb)]
 }
 
 func parseModes(s string) ([]string, error) {

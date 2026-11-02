@@ -7,7 +7,7 @@ The first decompressed byte tells the format apart. Format 1 is Me2Cloud's JSON 
 | Field | Encoding |
 |---|---|
 | format | byte, `2` |
-| flags | byte: bit 0 evening peak (20:00–23:00 local), bit 1 IPv6 only, bit 2 made by the CLI, bit 3 both IPv4 and IPv6 |
+| flags | byte: bit 0 evening peak (20:00–23:00 local), bit 1 IPv6 only, bit 2 made by the CLI, bit 3 both IPv4 and IPv6, bit 4 a local proxy or TUN seems to have answered the connections (the numbers are the proxy's, not the regions') |
 | mode | byte: `0` TCP handshake, `1` HTTPS, `2` ICMP |
 | samples per region | uvarint |
 | time | uvarint, minutes since the Unix epoch |

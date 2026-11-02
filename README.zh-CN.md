@@ -99,7 +99,7 @@ vps2cloud --max-ms 50              # 最快的区域也超过 50 ms 时，以退
 vps2cloud --list                   # 列出厂商；--list -p aws 列出 AWS 的全部区域
 ```
 
-`vps2cloud --help` 列出所有参数。每个区域测完就立刻在 stderr 输出一行，全部测完再在 stdout 给出排好序的表。测到一半按 Ctrl-C，会停下来并显示已经测完的区域。也可以让 [v2c.1ms.dog](https://v2c.1ms.dog) 帮你写命令：在页面上选好，复制，粘贴。
+`vps2cloud --help` 列出所有参数。在终端里，进度只占一行（已测数量和目前最快的区域），测完给出排好序的表；通过管道或在 CI 里运行时，每个区域测完就立刻在 stderr 输出一行，表仍然在 stdout。测到一半按 Ctrl-C，会停下来并显示已经测完的区域。也可以让 [v2c.1ms.dog](https://v2c.1ms.dog) 帮你写命令：在页面上选好，复制，粘贴。
 
 ### 语言
 

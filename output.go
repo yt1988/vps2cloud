@@ -52,7 +52,33 @@ type View struct {
 	Link     string // the short link, or the full one when there is no short link
 	LinkFull string
 	SortBy   string
+	// a local proxy or TUN seems to have answered (proxy.go): which sign, and the fake address when that is the sign
+	Proxy, ProxyDetail string
 }
+
+// cityText is a city for the screen: the list marks a region not yet placed with "?", which is nothing to show.
+func cityText(c string) string {
+	if c == "?" || c == "--" {
+		return ""
+	}
+	return c
+}
+
+// regionText is a region for the screen: a CDN has no region of its own (its "edge" is whichever is nearest).
+func regionText(e Endpoint) string {
+	if isCDN(e) {
+		return ""
+	}
+	return e.Region
+}
+
+// placeName is "Provider region" for a region, "Provider" for a CDN.
+func (v View) placeName(e Endpoint) string {
+	return strings.TrimSpace(v.vendorName(e.Vendor) + " " + regionText(e))
+}
+
+// presetName is a use-case preset in the user's language.
+func presetName(p string) string { return T("p_" + p) }
 
 // sortResults ranks by the first mode: answered hosts first, by the chosen key, then by median.
 func sortResults(res []*Result, modes []string, by string) {
@@ -122,11 +148,24 @@ func (v View) from() string {
 	return strings.Join(parts, " · ")
 }
 
+// f1 shows a time in ms with one decimal under 100. Under 0.05 it shows "<0.1": the clock on some systems (Windows
+// before Go 1.28) ticks coarser than that, and "0.0" would read as a bug.
 func f1(x float64) string {
 	if x >= 100 {
 		return strconv.FormatFloat(x, 'f', 0, 64)
 	}
+	if x < 0.05 {
+		return "<0.1"
+	}
 	return strconv.FormatFloat(x, 'f', 1, 64)
+}
+
+// jit shows a jitter: "±0" rather than "±<0.1" when there is none to speak of.
+func jit(x float64) string {
+	if x < 0.05 {
+		return "±0"
+	}
+	return "±" + f1(x)
 }
 
 func (v View) vendorName(id string) string { return v.List.VendorName(id) }
@@ -170,6 +209,9 @@ func msc(x float64) string { return paint(tierColor[tier(x)], f1(x)) }
 func (v View) Table(w io.Writer) {
 	fmt.Fprintf(w, "%s %s\n", paint(cBold, "VPS2Cloud "+version), paint(cDim, "· "+v.headline()))
 	fmt.Fprintf(w, "%s %s\n", paint(cDim, T("from")), paint(cBold, v.from()))
+	if t := proxyText(v.Proxy, v.ProxyDetail); t != "" {
+		fmt.Fprintf(w, "%s\n", paint(cYellow, "⚠ "+t))
+	}
 	for _, s := range v.Secs {
 		fmt.Fprintln(w)
 		if len(v.Secs) > 1 {
@@ -187,11 +229,13 @@ func (v View) table(w io.Writer, s Section) {
 	head := []string{"#", T("h_provider"), T("h_region"), T("h_city"), T("h_median"), T("h_min"), T("h_p90"), T("h_jitter"), T("h_loss"), T("h_tier")}
 	multi := len(v.Modes) > 1
 	if multi {
+		// with several modes, jitter, loss and tier are the first mode's, and the headings say so
 		head = []string{"#", T("h_provider"), T("h_region"), T("h_city")}
 		for _, m := range v.Modes {
 			head = append(head, strings.ToUpper(m))
 		}
-		head = append(head, T("h_jitter"), T("h_loss"), T("h_tier"))
+		of := " (" + strings.ToUpper(v.Modes[0]) + ")"
+		head = append(head, T("h_jitter")+of, T("h_loss")+of, T("h_tier")+of)
 	}
 	textTail := 1 // tier (and fit) are text at the end; the columns from the 5th up to them are numbers
 	if v.Preset != "" {
@@ -201,7 +245,7 @@ func (v View) table(w io.Writer, s Section) {
 	var rows [][]string
 	for i, r := range v.shown(s) {
 		p := r.Primary(v.Modes)
-		row := []string{paint(cDim, strconv.Itoa(i+1)), v.vendorName(r.E.Vendor), r.E.Region, paint(cDim, r.E.City)}
+		row := []string{paint(cDim, strconv.Itoa(i+1)), v.vendorName(r.E.Vendor), regionText(r.E), paint(cDim, cityText(r.E.City))}
 		cell := func(m *ModeResult) string {
 			if r.Err != "" {
 				return paint(cDim, r.Err)
@@ -234,7 +278,7 @@ func (v View) table(w io.Writer, s Section) {
 			} else {
 				loss = paint(cDim, loss)
 			}
-			row = append(row, "±"+f1(p.St.Jit), loss, paint(tierColor[t], "T"+strconv.Itoa(t)))
+			row = append(row, jit(p.St.Jit), loss, paint(tierColor[t], "T"+strconv.Itoa(t)))
 		} else {
 			row = append(row, "", "", "")
 		}
@@ -259,15 +303,16 @@ func (v View) table(w io.Writer, s Section) {
 		}
 	}
 	numeric := func(i int) bool { return i == 0 || (i >= 4 && i < len(head)-textTail) }
-	// no city anywhere (CDNs, answered by whichever edge is nearest): leave the column out
-	noCity := true
+	// no region or city anywhere (CDNs, answered by whichever edge is nearest): leave the column out
+	noRegion, noCity := true, true
 	for _, r := range v.shown(s) {
-		noCity = noCity && r.E.City == ""
+		noRegion = noRegion && regionText(r.E) == ""
+		noCity = noCity && cityText(r.E.City) == ""
 	}
 	line := func(cells []string) string {
 		var parts []string
 		for i, cl := range cells {
-			if i == 3 && noCity {
+			if i == 2 && noRegion || i == 3 && noCity {
 				continue
 			}
 			parts = append(parts, padText(cl, widths[i], numeric(i)))
@@ -292,7 +337,8 @@ func (v View) table(w io.Writer, s Section) {
 		seen[r.E.Vendor] = true
 		best = append(best, [3]string{v.vendorName(r.E.Vendor), r.E.Region, msc(p.St.Med) + " ms"})
 	}
-	if len(best) > 1 && len(best) < len(s.Res) { // with one region per provider (CDNs) it would repeat the table
+	// with one region per provider (CDNs) it would repeat the table; with a proxy answering, it would rank nothing real
+	if len(best) > 1 && len(best) < len(s.Res) && v.Proxy == "" {
 		fmt.Fprintf(w, "\n%s\n", paint(cBold, T("best")))
 		wn, wr := 0, 0
 		for _, b := range best {
@@ -307,6 +353,36 @@ func (v View) table(w io.Writer, s Section) {
 		noV6 = T("noV6", s.NoV6)
 	}
 	fmt.Fprintf(w, "%s\n", paint(cDim, T("answered", answered(s, v.Modes), len(s.Res), noV6)))
+	// the conclusion: the nearest place, and how many regions suit each use (or the chosen preset). Not when a proxy
+	// answered: those numbers are nobody's distance.
+	if v.Proxy != "" {
+		return
+	}
+	if len(s.Res) > 0 {
+		if p := s.Res[0].Primary(v.Modes); p != nil && p.St.OK > 0 && v.SortBy == "median" {
+			fmt.Fprintf(w, "%s\n", paint(cBold, T("nearest", v.placeName(s.Res[0].E), f1(p.St.Med))))
+		}
+	}
+	count := func(name string) int {
+		n := 0
+		for _, r := range s.Res {
+			if p := r.Primary(v.Modes); p != nil && fits(p.St, presets[name]) {
+				n++
+			}
+		}
+		return n
+	}
+	if answered(s, v.Modes) > 0 {
+		if v.Preset != "" {
+			fmt.Fprintf(w, "%s\n", paint(cDim, T("fitOne", count(v.Preset), presetName(v.Preset))))
+		} else {
+			var parts []string
+			for _, name := range []string{"game", "call", "ssh", "web"} {
+				parts = append(parts, presetName(name)+" "+strconv.Itoa(count(name)))
+			}
+			fmt.Fprintf(w, "%s\n", paint(cDim, T("goodFor", strings.Join(parts, " · "))))
+		}
+	}
 }
 
 // Markdown: a table per IP family to paste into a forum post or an issue, with the share link for the full result.
@@ -319,7 +395,11 @@ func (v View) Markdown(w io.Writer) {
 		for _, m := range v.Modes {
 			cols += " " + strings.ToUpper(m) + " |"
 		}
-		cols += fmt.Sprintf(" %s | %s |", T("h_jitter"), T("h_loss"))
+		of := " (" + strings.ToUpper(v.Modes[0]) + ")"
+		cols += fmt.Sprintf(" %s | %s |", T("h_jitter")+of, T("h_loss")+of)
+	}
+	if t := proxyText(v.Proxy, v.ProxyDetail); t != "" {
+		fmt.Fprintf(w, "\n> ⚠ %s\n", t)
 	}
 	sep := "|---:|---|---|---|"
 	for i := 4; i < strings.Count(cols, "|")-1; i++ {
@@ -337,7 +417,7 @@ func (v View) Markdown(w io.Writer) {
 			if p == nil || p.St.OK == 0 {
 				continue
 			}
-			row := fmt.Sprintf("| %d | %s | %s | %s |", i+1, v.vendorName(r.E.Vendor), r.E.Region, r.E.City)
+			row := fmt.Sprintf("| %d | %s | %s | %s |", i+1, v.vendorName(r.E.Vendor), regionText(r.E), cityText(r.E.City))
 			if len(v.Modes) > 1 {
 				for _, m := range v.Modes {
 					if x := r.Modes[m]; x != nil && x.St.OK > 0 {
@@ -349,7 +429,7 @@ func (v View) Markdown(w io.Writer) {
 			} else {
 				row += " " + f1(p.St.Med) + " ms |"
 			}
-			row += fmt.Sprintf(" ±%s | %.0f%% |", f1(p.St.Jit), p.St.Loss*100)
+			row += fmt.Sprintf(" %s | %.0f%% |", jit(p.St.Jit), p.St.Loss*100)
 			fmt.Fprintln(w, row)
 		}
 		if v.Top > 0 && v.Top < len(s.Res) {
@@ -437,10 +517,12 @@ func (v View) JSON(w io.Writer) {
 		From      *Origin   `json:"from"`
 		Endpoints string    `json:"endpoints"`
 		Preset    string    `json:"preset,omitempty"`
+		Proxy     string    `json:"proxy_suspected,omitempty"` // fake, fast or gap (see proxy.go): the numbers are a proxy's
+		ProxyAddr string    `json:"proxy_fake_addr,omitempty"`
 		Link      string    `json:"link,omitempty"`
 		LinkFull  string    `json:"link_full,omitempty"`
 		Regions   []row     `json:"regions"`
-	}{"vps2cloud", version, v.At.UTC(), v.Modes, v.N, fams, noV6, o, v.List.Source, v.Preset, v.Link, v.LinkFull, nil}
+	}{"vps2cloud", version, v.At.UTC(), v.Modes, v.N, fams, noV6, o, v.List.Source, v.Preset, v.Proxy, v.ProxyDetail, v.Link, v.LinkFull, nil}
 	for _, s := range v.Secs {
 		for _, r := range v.shown(s) {
 			x := row{ID: r.E.ID, Family: s.Fam, Provider: r.E.Vendor, Region: r.E.Region, City: r.E.City, Country: r.E.Country, Continent: r.E.Continent,

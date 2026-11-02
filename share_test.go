@@ -115,7 +115,7 @@ func TestShareRoundTrip(t *testing.T) {
 	l, _ := parseList(embeddedList)
 	res := fakeResults(l, 3, 6)
 	at := time.Date(2026, 10, 29, 21, 5, 0, 0, time.Local)
-	link := shareLink([]Section{{Fam: 6, Res: res}}, l, []string{"tcp"}, 10, &Origin{City: "Nürnberg", Country: "DE", Org: "netcup GmbH", IP: "203.0.113.9"}, at)
+	link := shareLink([]Section{{Fam: 6, Res: res}}, l, []string{"tcp"}, 10, &Origin{City: "Nürnberg", Country: "DE", Org: "netcup GmbH", IP: "203.0.113.9"}, at, false)
 	if strings.Contains(link, "203.0.113.9") {
 		t.Fatal("IP in link")
 	}
@@ -143,7 +143,7 @@ func TestShareRoundTrip(t *testing.T) {
 func TestShareBothFamilies(t *testing.T) {
 	l, _ := parseList(embeddedList)
 	v4, v6 := fakeResults(l, 2, 4), fakeResults(l, 7, 6)
-	d := decodeShare(t, shareLink([]Section{{Fam: 4, Res: v4}, {Fam: 6, Res: v6}}, l, []string{"tcp"}, 5, nil, time.Date(2026, 10, 29, 9, 0, 0, 0, time.Local)))
+	d := decodeShare(t, shareLink([]Section{{Fam: 4, Res: v4}, {Fam: 6, Res: v6}}, l, []string{"tcp"}, 5, nil, time.Date(2026, 10, 29, 9, 0, 0, 0, time.Local), false))
 	if d.flags != flagCLI|flagBoth || len(d.blocks) != 2 || len(d.blocks[0]) != len(v4) || len(d.blocks[1]) != len(v6) {
 		t.Fatalf("flags %b, blocks %d", d.flags, len(d.blocks))
 	}
@@ -159,12 +159,12 @@ func TestShareBothFamilies(t *testing.T) {
 func TestShareLength(t *testing.T) {
 	l, _ := parseList(embeddedList)
 	o := &Origin{City: "Nuremberg", Country: "DE", Org: "netcup GmbH"}
-	link := shareLink([]Section{{Fam: 4, Res: fakeResults(l, 1, 4)}}, l, []string{"tcp"}, 10, o, time.Now())
+	link := shareLink([]Section{{Fam: 4, Res: fakeResults(l, 1, 4)}}, l, []string{"tcp"}, 10, o, time.Now(), false)
 	t.Logf("all %d regions: %d characters", len(l.Endpoints), len(link))
 	if len(link) > 3000 {
 		t.Errorf("link is %d characters", len(link))
 	}
-	both := shareLink([]Section{{Fam: 4, Res: fakeResults(l, 1, 4)}, {Fam: 6, Res: fakeResults(l, 4, 6)}}, l, []string{"tcp"}, 10, o, time.Now())
+	both := shareLink([]Section{{Fam: 4, Res: fakeResults(l, 1, 4)}, {Fam: 6, Res: fakeResults(l, 4, 6)}}, l, []string{"tcp"}, 10, o, time.Now(), false)
 	t.Logf("all regions over IPv4 and IPv6: %d characters", len(both))
 }
 
@@ -212,7 +212,7 @@ func TestShareCDN(t *testing.T) {
 	}
 	// a CDN run: format 3, no regions, the CDNs by id; one with no answer is left out
 	failed := &Result{E: l.CDNs[0], Fam: 4, Modes: map[string]*ModeResult{"https": {St: Stats{N: 10}}}}
-	d := decodeShare(t, shareLink([]Section{{Fam: 4, Res: []*Result{cdn("cdn:fastly", 4.3), cdn("cdn:azure", 5.5), failed}}}, l, []string{"https"}, 10, nil, at))
+	d := decodeShare(t, shareLink([]Section{{Fam: 4, Res: []*Result{cdn("cdn:fastly", 4.3), cdn("cdn:azure", 5.5), failed}}}, l, []string{"https"}, 10, nil, at, false))
 	if d.format != 3 || d.mode != 1 || len(d.blocks[0]) != 0 || d.regionCount[0] != 0 || len(d.cdns) != 1 || len(d.cdns[0]) != 2 {
 		t.Fatalf("format %d mode %d regions %d cdns %v", d.format, d.mode, len(d.blocks[0]), d.cdns)
 	}
@@ -220,7 +220,7 @@ func TestShareCDN(t *testing.T) {
 		t.Errorf("fastly: %v", got)
 	}
 	// regions only: still format 2, byte for byte the old layout
-	if d := decodeShare(t, shareLink([]Section{{Fam: 4, Res: fakeResults(l, 5, 4)}}, l, []string{"tcp"}, 10, nil, at)); d.format != 2 || d.cdns != nil {
+	if d := decodeShare(t, shareLink([]Section{{Fam: 4, Res: fakeResults(l, 5, 4)}}, l, []string{"tcp"}, 10, nil, at, false)); d.format != 2 || d.cdns != nil {
 		t.Fatalf("regions only: format %d", d.format)
 	}
 }

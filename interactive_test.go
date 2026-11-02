@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -29,7 +30,7 @@ func keys(v6 bool, parts ...string) string {
 func TestWizardSave(t *testing.T) {
 	l, _ := parseList(embeddedList)
 	k := keys(hasRoute(6), "1", ipKey, "", "")
-	got := wizard(strings.NewReader(k[:len(k)-1]+"3\n"), io.Discard, l, false)
+	got := wizard(strings.NewReader(k[:len(k)-1]+"3\n"), io.Discard, l, false, nil)
 	if !reflect.DeepEqual(got, []string{"-o", "json"}) {
 		t.Errorf("got %q", got)
 	}
@@ -66,7 +67,7 @@ func TestWizard(t *testing.T) {
 				want = []string{"-m", "https"}
 			}
 		}
-		got := wizard(strings.NewReader(keys(v6, c.keys...)), io.Discard, l, false)
+		got := wizard(strings.NewReader(keys(v6, c.keys...)), io.Discard, l, false, nil)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("%s: got %q, want %q", c.name, got, want)
 		}
@@ -78,7 +79,7 @@ func TestWizardBoth(t *testing.T) {
 		t.Skip("no IPv6 here: the IP question is not asked")
 	}
 	l, _ := parseList(embeddedList)
-	got := wizard(strings.NewReader("1\n3\n\n\n\n"), io.Discard, l, false)
+	got := wizard(strings.NewReader("1\n3\n\n\n\n"), io.Discard, l, false, nil)
 	if !reflect.DeepEqual(got, []string{"--ip", "both"}) {
 		t.Errorf("got %q", got)
 	}
@@ -86,17 +87,17 @@ func TestWizardBoth(t *testing.T) {
 
 func TestWizardExit(t *testing.T) {
 	l, _ := parseList(embeddedList)
-	if got := wizard(strings.NewReader("0\n"), io.Discard, l, false); got != nil {
+	if got := wizard(strings.NewReader("0\n"), io.Discard, l, false, nil); got != nil {
 		t.Errorf("0 on the first question should exit, got %q", got)
 	}
-	if got := wizard(strings.NewReader(""), io.Discard, l, false); got != nil {
+	if got := wizard(strings.NewReader(""), io.Discard, l, false, nil); got != nil {
 		t.Errorf("closed input should end the menu, got %q", got)
 	}
 }
 
 func TestWizardProviders(t *testing.T) {
 	l, _ := parseList(embeddedList)
-	got := wizard(strings.NewReader(keys(hasRoute(6), "2", "1,2", ipKey, "", "")), io.Discard, l, false)
+	got := wizard(strings.NewReader(keys(hasRoute(6), "2", "1,2", ipKey, "", "")), io.Discard, l, false, nil)
 	if len(got) != 2 || got[0] != "-p" || strings.Count(got[1], ",") != 1 {
 		t.Fatalf("got %q", got)
 	}
@@ -128,7 +129,7 @@ func TestWizardLanguage(t *testing.T) {
 	// first run: pick 简体中文 (2), then the defaults; the choice is saved
 	lang = "en"
 	var out strings.Builder
-	got := wizard(strings.NewReader(keys(v6, "2", "", ipKey, "", "")), &out, l, true)
+	got := wizard(strings.NewReader(keys(v6, "2", "", ipKey, "", "")), &out, l, true, nil)
 	if got == nil || lang != "zh-CN" || loadConfig().Lang != "zh-CN" {
 		t.Fatalf("first run: got %q, lang %s, saved %q", got, lang, loadConfig().Lang)
 	}
@@ -137,13 +138,13 @@ func TestWizardLanguage(t *testing.T) {
 	}
 	// from the menu: item 5, then 日本語 (4); the menu comes back in Japanese
 	out.Reset()
-	got = wizard(strings.NewReader(keys(v6, "5", "4", "1", ipKey, "", "")), &out, l, false)
+	got = wizard(strings.NewReader(keys(v6, "5", "4", "1", ipKey, "", "")), &out, l, false, nil)
 	if got == nil || lang != "ja" || loadConfig().Lang != "ja" || !strings.Contains(out.String(), "言語 / Language") {
 		t.Fatalf("menu change: got %q, lang %s, saved %q", got, lang, loadConfig().Lang)
 	}
 	// 0 in the language list goes back without changing it
 	out.Reset()
-	got = wizard(strings.NewReader(keys(v6, "5", "0", "1", ipKey, "", "")), &out, l, false)
+	got = wizard(strings.NewReader(keys(v6, "5", "0", "1", ipKey, "", "")), &out, l, false, nil)
 	if got == nil || lang != "ja" {
 		t.Fatalf("back from the language list: got %q, lang %s", got, lang)
 	}
@@ -176,8 +177,39 @@ func TestWizardCDN(t *testing.T) {
 	}
 	// item 4 goes straight on to the IP version and samples: CDNs have no method to choose
 	var out strings.Builder
-	got := wizard(strings.NewReader(keys(hasRoute(6), "4", ipKey, "")), &out, l, false)
+	got := wizard(strings.NewReader(keys(hasRoute(6), "4", ipKey, "")), &out, l, false, nil)
 	if len(got) != 1 || got[0] != "--cdn" || strings.Contains(out.String(), T("how")) {
 		t.Fatalf("got %q:\n%s", got, out.String())
+	}
+}
+
+func TestWizardLast(t *testing.T) {
+	tempConfig(t)
+	l, _ := parseList(embeddedList)
+	last := []string{"-p", "aws,gcp", "-n", "5"}
+	// with a previous run, it is the first item and the default: Enter runs it again
+	var out strings.Builder
+	got := wizard(strings.NewReader("\n"), &out, l, false, last)
+	if strings.Join(got, " ") != strings.Join(last, " ") || !strings.Contains(out.String(), "-p aws,gcp") {
+		t.Fatalf("got %q:\n%s", got, out.String())
+	}
+	// the other items move down one: 2 is now "all regions", and the language item is still the last
+	got = wizard(strings.NewReader(keys(hasRoute(6), "2", ipKey, "", "", "")), io.Discard, l, false, last)
+	if len(got) != 0 {
+		t.Fatalf("item 2 with a last run: got %q, want the all-regions default", got)
+	}
+	n := 6
+	if len(l.CDNs) == 0 {
+		n = 5
+	}
+	out.Reset()
+	got = wizard(strings.NewReader(keys(hasRoute(6), strconv.Itoa(n), "0", "2", ipKey, "", "", "")), &out, l, false, last)
+	if !strings.Contains(out.String(), "Language") {
+		t.Fatalf("item %d should open the language menu:\n%s", n, out.String())
+	}
+	// without one, nothing moves
+	got = wizard(strings.NewReader(keys(hasRoute(6), "1", ipKey, "", "", "")), io.Discard, l, false, nil)
+	if len(got) != 0 {
+		t.Fatalf("no last run: got %q", got)
 	}
 }

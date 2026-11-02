@@ -209,8 +209,9 @@ func (m menu) chooseLang(first bool) int {
 }
 
 // wizard returns the options for the run, or nil when the user exits or the input ends. askLang is set on the first
-// run, before any language has been chosen.
-func wizard(in io.Reader, out io.Writer, l *List, askLang bool) []string {
+// run, before any language has been chosen. last is the previous run's options; when there are any, the first item
+// (and the default) is to run the same test again.
+func wizard(in io.Reader, out io.Writer, l *List, askLang bool, last []string) []string {
 	m := menu{bufio.NewReader(in), out}
 	if askLang {
 		if m.chooseLang(true) <= 0 {
@@ -238,15 +239,28 @@ func wizard(in io.Reader, out io.Writer, l *List, askLang bool) []string {
 		switch step {
 		case stepScope:
 			fmt.Fprintf(out, "\n%s\n%s\n", paint(cBold, T("title", version, len(l.Endpoints))), paint(cDim, T("machine", fams)))
-			// the CDN item only when the list has CDNs (older lists don't); the language item is always last
+			// the CDN item only when the list has CDNs (older lists don't); the language item is always last; the
+			// previous run, when there was one, comes first and is the default
 			items := []string{T("all", len(l.Endpoints)), T("prov"), T("cont"), T("cdnItem", len(l.CDNs)), langLabel()}
 			if len(l.CDNs) == 0 {
 				items = append(items[:3], langLabel())
 			}
+			offset := 0
+			if len(last) > 0 {
+				items = append([]string{T("lastItem", paint(cCyan, commandLine(last)))}, items...)
+				offset = 1
+			}
 			m.question(T("what"), items, true)
 			pick := m.ask(1, len(items))
 			if pick == len(items) {
-				pick = 5
+				pick = 5 + offset
+			}
+			if offset == 1 && pick == 1 {
+				fmt.Fprintln(out)
+				return append([]string(nil), last...)
+			}
+			if pick > 0 {
+				pick -= offset
 			}
 			switch pick {
 			case end, back:

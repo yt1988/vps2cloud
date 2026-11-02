@@ -40,9 +40,10 @@ func knownLang(code string) string {
 
 // The saved choice lives in the user's config directory (~/.config/vps2cloud/config.json on Linux).
 type config struct {
-	Lang      string `json:"lang,omitempty"`
-	Latest    string `json:"latest,omitempty"`     // newest release seen
-	CheckedAt int64  `json:"checked_at,omitempty"` // when it was looked up (Unix seconds)
+	Lang      string   `json:"lang,omitempty"`
+	Latest    string   `json:"latest,omitempty"`     // newest release seen
+	CheckedAt int64    `json:"checked_at,omitempty"` // when it was looked up (Unix seconds)
+	Last      []string `json:"last,omitempty"`       // the options of the last run, for the menu's first item
 }
 
 func configPath() string {
@@ -114,7 +115,12 @@ var texts = map[string]map[string]string{
 		"shortFail": "the short link service did not answer; showing the full link",
 		"saved":     "Saved:", "saveQ": "Also save the result as a file?", "saveNo": "No, the table on screen is enough",
 		"updAsk": "vps2cloud v%s is out (you have v%s). Update now?", "updNote": "vps2cloud v%s is available: run vps2cloud --update", "updDone": "Updated to v%s", "updLatest": "vps2cloud v%s is the latest version", "updFail": "update failed: %s", "updPerm": "no permission to replace %s; run it with sudo, or install again: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Run vps2cloud again to use the new version.",
-		"partial": "interrupted: the %d of %d regions measured so far",
+		"partial":   "interrupted: the %d of %d regions measured so far",
+		"proxyWarn": "A local proxy or TUN seems to answer these connections: the numbers are the distance to the proxy, not to the regions (%s)", "proxyFake": "fake address %s", "proxyFast": "every continent under 5 ms", "proxyGap": "HTTPS over 50× slower than TCP",
+		"bestSoFar": "best so far", "nearest": "Nearest: %s %s ms", "goodFor": "Good for: %s (--preset game marks them in the table)", "fitOne": "%d regions fit %s", "p_game": "gaming", "p_call": "calls", "p_ssh": "SSH", "p_web": "web",
+		"lastItem": "Same as last time: %s", "badFlag": "no option --%s", "didYouMean": "did you mean --%s?", "seeHelp": "--help lists the options",
+		"u_title": "VPS2Cloud: latency from this machine to %d regions of %d cloud providers.", "u_what": "What to test", "u_how": "How to measure", "u_out": "Output", "u_list": "Endpoint list",
+		"u_exit": "Exit status: 0 done · 1 error · 2 bad options · 3 best median above --max-ms · 130 interrupted",
 	},
 	"zh-CN": {
 		"title": "VPS2Cloud %s · 测这台机器到 %d 个云区域的延迟", "machine": "本机：%s · 回车选 [默认] · Ctrl-C 退出",
@@ -134,7 +140,12 @@ var texts = map[string]map[string]string{
 		"shortFail": "短链服务没有响应，改为显示完整链接",
 		"saved":     "已保存：", "saveQ": "同时把结果保存成文件吗？", "saveNo": "不用，看屏幕上的表格就行",
 		"updAsk": "发现新版本 v%s（当前 v%s），现在更新吗？", "updNote": "vps2cloud 有新版本 v%s：运行 vps2cloud --update 更新", "updDone": "已更新到 v%s", "updLatest": "vps2cloud v%s 已是最新版本", "updFail": "更新失败：%s", "updPerm": "没有权限替换 %s；请用 sudo 运行，或重新安装：curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "请重新运行 vps2cloud 以使用新版本。",
-		"partial": "已中断：以下是已测完的 %d / %d 个区域",
+		"partial":   "已中断：以下是已测完的 %d / %d 个区域",
+		"proxyWarn": "这些连接似乎由本机的代理或 TUN 应答：数字是到代理的距离，不是到云区域的（%s）", "proxyFake": "解析到假地址 %s", "proxyFast": "所有大洲都在 5 ms 以内", "proxyGap": "HTTPS 比 TCP 慢 50 倍以上",
+		"bestSoFar": "目前最快", "nearest": "最近：%s %s ms", "goodFor": "适合：%s（加 --preset game 可在表里标出）", "fitOne": "符合 %[2]s 的有 %[1]d 个区域", "p_game": "游戏", "p_call": "通话", "p_ssh": "SSH", "p_web": "网页",
+		"lastItem": "和上次一样：%s", "badFlag": "没有 --%s 这个选项", "didYouMean": "是不是 --%s？", "seeHelp": "--help 列出全部选项",
+		"u_title": "VPS2Cloud：测这台机器到 %[2]d 家云厂商 %[1]d 个区域的延迟。", "u_what": "测什么", "u_how": "怎么测", "u_out": "输出", "u_list": "节点清单",
+		"u_exit": "退出码：0 完成 · 1 出错 · 2 选项有误 · 3 最快的中位数超过 --max-ms · 130 被中断",
 	},
 	"zh-TW": {
 		"title": "VPS2Cloud %s · 測這台機器到 %d 個雲端區域的延遲", "machine": "本機：%s · Enter 選 [預設] · Ctrl-C 離開",
@@ -154,7 +165,12 @@ var texts = map[string]map[string]string{
 		"shortFail": "短網址服務沒有回應，改為顯示完整連結",
 		"saved":     "已儲存：", "saveQ": "同時把結果存成檔案嗎？", "saveNo": "不用，看螢幕上的表格就好",
 		"updAsk": "發現新版本 v%s（目前 v%s），現在更新嗎？", "updNote": "vps2cloud 有新版本 v%s：執行 vps2cloud --update 更新", "updDone": "已更新到 v%s", "updLatest": "vps2cloud v%s 已是最新版本", "updFail": "更新失敗：%s", "updPerm": "沒有權限取代 %s；請用 sudo 執行，或重新安裝：curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "請重新執行 vps2cloud 以使用新版本。",
-		"partial": "已中斷：以下是已測完的 %d / %d 個區域",
+		"partial":   "已中斷：以下是已測完的 %d / %d 個區域",
+		"proxyWarn": "這些連線似乎由本機的代理或 TUN 回應：數字是到代理的距離，不是到雲端區域的（%s）", "proxyFake": "解析到假位址 %s", "proxyFast": "所有大洲都在 5 ms 以內", "proxyGap": "HTTPS 比 TCP 慢 50 倍以上",
+		"bestSoFar": "目前最快", "nearest": "最近：%s %s ms", "goodFor": "適合：%s（加 --preset game 可在表裡標出）", "fitOne": "符合 %[2]s 的有 %[1]d 個區域", "p_game": "遊戲", "p_call": "通話", "p_ssh": "SSH", "p_web": "網頁",
+		"lastItem": "和上次一樣：%s", "badFlag": "沒有 --%s 這個選項", "didYouMean": "是不是 --%s？", "seeHelp": "--help 列出全部選項",
+		"u_title": "VPS2Cloud：測這台機器到 %[2]d 家雲端廠商 %[1]d 個區域的延遲。", "u_what": "要測什麼", "u_how": "怎麼測", "u_out": "輸出", "u_list": "節點清單",
+		"u_exit": "結束碼：0 完成 · 1 出錯 · 2 選項有誤 · 3 最快的中位數超過 --max-ms · 130 被中斷",
 	},
 	"ja": {
 		"title": "VPS2Cloud %s · このマシンから %d のクラウドリージョンまでの遅延", "machine": "このマシン：%s · Enter で [既定] · Ctrl-C で終了",
@@ -174,7 +190,12 @@ var texts = map[string]map[string]string{
 		"shortFail": "短縮リンクのサービスが応答しないため、完全なリンクを表示します",
 		"saved":     "保存しました：", "saveQ": "結果をファイルにも保存しますか？", "saveNo": "いいえ、画面の表で十分",
 		"updAsk": "新しいバージョン v%s があります（現在 v%s）。今すぐ更新しますか？", "updNote": "vps2cloud v%s が利用できます：vps2cloud --update で更新", "updDone": "v%s に更新しました", "updLatest": "vps2cloud v%s は最新版です", "updFail": "更新に失敗しました：%s", "updPerm": "%s を置き換える権限がありません。sudo で実行するか再インストールしてください：curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "新しいバージョンを使うには vps2cloud をもう一度実行してください。",
-		"partial": "中断しました：測定済みの %d / %d リージョン",
+		"partial":   "中断しました：測定済みの %d / %d リージョン",
+		"proxyWarn": "ローカルのプロキシか TUN がこれらの接続に応答しているようです。数値はプロキシまでの距離で、リージョンまでではありません（%s）", "proxyFake": "偽のアドレス %s に解決", "proxyFast": "すべての大陸が 5 ms 未満", "proxyGap": "HTTPS が TCP より 50 倍以上遅い",
+		"bestSoFar": "現時点の最速", "nearest": "最寄り：%s %s ms", "goodFor": "向いている用途：%s（--preset game で表に印が付きます）", "fitOne": "%[2]s に合うリージョンは %[1]d 件", "p_game": "ゲーム", "p_call": "通話", "p_ssh": "SSH", "p_web": "ウェブ",
+		"lastItem": "前回と同じ：%s", "badFlag": "--%s というオプションはありません", "didYouMean": "--%s のことですか？", "seeHelp": "--help でオプション一覧",
+		"u_title": "VPS2Cloud：このマシンから %[2]d 社 %[1]d リージョンまでの遅延。", "u_what": "何を測るか", "u_how": "どう測るか", "u_out": "出力", "u_list": "エンドポイント一覧",
+		"u_exit": "終了コード：0 完了 · 1 エラー · 2 オプション誤り · 3 最速の中央値が --max-ms 超過 · 130 中断",
 	},
 	"ko": {
 		"title": "VPS2Cloud %s · 이 머신에서 %d개 클라우드 리전까지의 지연", "machine": "이 머신: %s · Enter는 [기본값] · Ctrl-C는 종료",
@@ -194,7 +215,12 @@ var texts = map[string]map[string]string{
 		"shortFail": "단축 링크 서비스가 응답하지 않아 전체 링크를 표시합니다",
 		"saved":     "저장됨:", "saveQ": "결과를 파일로도 저장할까요?", "saveNo": "아니요, 화면의 표면 충분합니다",
 		"updAsk": "새 버전 v%s이(가) 있습니다(현재 v%s). 지금 업데이트할까요?", "updNote": "vps2cloud v%s 사용 가능: vps2cloud --update 로 업데이트", "updDone": "v%s(으)로 업데이트했습니다", "updLatest": "vps2cloud v%s 는 최신 버전입니다", "updFail": "업데이트 실패: %s", "updPerm": "%s 을(를) 바꿀 권한이 없습니다. sudo 로 실행하거나 다시 설치하세요: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "새 버전을 사용하려면 vps2cloud 를 다시 실행하세요.",
-		"partial": "중단됨: 지금까지 측정한 %d / %d개 리전",
+		"partial":   "중단됨: 지금까지 측정한 %d / %d개 리전",
+		"proxyWarn": "로컬 프록시나 TUN이 이 연결에 응답하는 것 같습니다. 숫자는 프록시까지의 거리이지 리전까지가 아닙니다(%s)", "proxyFake": "가짜 주소 %s 로 해석됨", "proxyFast": "모든 대륙이 5 ms 미만", "proxyGap": "HTTPS가 TCP보다 50배 이상 느림",
+		"bestSoFar": "현재 최고", "nearest": "가장 가까움: %s %s ms", "goodFor": "적합한 용도: %s(--preset game 으로 표에 표시)", "fitOne": "%[2]s 에 맞는 리전 %[1]d개", "p_game": "게임", "p_call": "통화", "p_ssh": "SSH", "p_web": "웹",
+		"lastItem": "지난번과 같게: %s", "badFlag": "--%s 옵션은 없습니다", "didYouMean": "--%s 을(를) 말씀하신 건가요?", "seeHelp": "--help 로 옵션 목록 보기",
+		"u_title": "VPS2Cloud: 이 머신에서 %[2]d개 클라우드 %[1]d개 리전까지의 지연.", "u_what": "무엇을 측정할지", "u_how": "어떻게 측정할지", "u_out": "출력", "u_list": "엔드포인트 목록",
+		"u_exit": "종료 코드: 0 완료 · 1 오류 · 2 옵션 오류 · 3 최고 중앙값이 --max-ms 초과 · 130 중단",
 	},
 	"es": {
 		"title": "VPS2Cloud %s · latencia desde esta máquina a %d regiones en la nube", "machine": "Esta máquina: %s · Enter deja el [predeterminado] · Ctrl-C sale",
@@ -214,7 +240,12 @@ var texts = map[string]map[string]string{
 		"shortFail": "el servicio de enlaces cortos no respondió; se muestra el enlace completo",
 		"saved":     "Guardado:", "saveQ": "¿Guardar también el resultado en un archivo?", "saveNo": "No, basta con la tabla en pantalla",
 		"updAsk": "Hay una versión nueva, v%s (tienes v%s). ¿Actualizar ahora?", "updNote": "vps2cloud v%s disponible: ejecuta vps2cloud --update", "updDone": "Actualizado a v%s", "updLatest": "vps2cloud v%s es la última versión", "updFail": "no se pudo actualizar: %s", "updPerm": "sin permiso para reemplazar %s; usa sudo o reinstala: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Vuelve a ejecutar vps2cloud para usar la versión nueva.",
-		"partial": "interrumpido: las %d de %d regiones medidas hasta ahora",
+		"partial":   "interrumpido: las %d de %d regiones medidas hasta ahora",
+		"proxyWarn": "Parece que un proxy o TUN local responde a estas conexiones: las cifras son la distancia al proxy, no a las regiones (%s)", "proxyFake": "dirección falsa %s", "proxyFast": "todos los continentes por debajo de 5 ms", "proxyGap": "HTTPS más de 50× más lento que TCP",
+		"bestSoFar": "mejor hasta ahora", "nearest": "Más cercana: %s %s ms", "goodFor": "Sirve para: %s (--preset game las marca en la tabla)", "fitOne": "%d regiones sirven para %s", "p_game": "juegos", "p_call": "llamadas", "p_ssh": "SSH", "p_web": "web",
+		"lastItem": "Igual que la última vez: %s", "badFlag": "no existe la opción --%s", "didYouMean": "¿querías decir --%s?", "seeHelp": "--help lista las opciones",
+		"u_title": "VPS2Cloud: latencia desde esta máquina a %d regiones de %d proveedores de nube.", "u_what": "Qué medir", "u_how": "Cómo medir", "u_out": "Salida", "u_list": "Lista de endpoints",
+		"u_exit": "Código de salida: 0 hecho · 1 error · 2 opciones incorrectas · 3 la mejor mediana supera --max-ms · 130 interrumpido",
 	},
 	"fr": {
 		"title": "VPS2Cloud %s · latence de cette machine vers %d régions cloud", "machine": "Cette machine : %s · Entrée garde la [valeur par défaut] · Ctrl-C quitte",
@@ -234,7 +265,12 @@ var texts = map[string]map[string]string{
 		"shortFail": "le service de liens courts n’a pas répondu ; lien complet affiché",
 		"saved":     "Enregistré :", "saveQ": "Enregistrer aussi le résultat dans un fichier ?", "saveNo": "Non, le tableau à l’écran suffit",
 		"updAsk": "La version v%s est disponible (vous avez v%s). Mettre à jour maintenant ?", "updNote": "vps2cloud v%s est disponible : lancez vps2cloud --update", "updDone": "Mis à jour en v%s", "updLatest": "vps2cloud v%s est la dernière version", "updFail": "échec de la mise à jour : %s", "updPerm": "pas le droit de remplacer %s ; utilisez sudo ou réinstallez : curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Relancez vps2cloud pour utiliser la nouvelle version.",
-		"partial": "interrompu : les %d régions mesurées sur %d",
+		"partial":   "interrompu : les %d régions mesurées sur %d",
+		"proxyWarn": "Un proxy ou TUN local semble répondre à ces connexions : les chiffres sont la distance au proxy, pas aux régions (%s)", "proxyFake": "fausse adresse %s", "proxyFast": "tous les continents sous 5 ms", "proxyGap": "HTTPS plus de 50× plus lent que TCP",
+		"bestSoFar": "meilleure pour l’instant", "nearest": "La plus proche : %s %s ms", "goodFor": "Convient pour : %s (--preset game les marque dans le tableau)", "fitOne": "%d régions conviennent pour %s", "p_game": "jeu", "p_call": "appels", "p_ssh": "SSH", "p_web": "web",
+		"lastItem": "Comme la dernière fois : %s", "badFlag": "l’option --%s n’existe pas", "didYouMean": "vouliez-vous dire --%s ?", "seeHelp": "--help liste les options",
+		"u_title": "VPS2Cloud : latence de cette machine vers %d régions de %d fournisseurs cloud.", "u_what": "Que mesurer", "u_how": "Comment mesurer", "u_out": "Sortie", "u_list": "Liste d’endpoints",
+		"u_exit": "Code de sortie : 0 terminé · 1 erreur · 2 options incorrectes · 3 meilleure médiane au-dessus de --max-ms · 130 interrompu",
 	},
 	"de": {
 		"title": "VPS2Cloud %s · Latenz von diesem Rechner zu %d Cloud-Regionen", "machine": "Dieser Rechner: %s · Enter übernimmt den [Standard] · Strg-C beendet",
@@ -254,7 +290,12 @@ var texts = map[string]map[string]string{
 		"shortFail": "der Kurzlink-Dienst hat nicht geantwortet; der vollständige Link wird angezeigt",
 		"saved":     "Gespeichert:", "saveQ": "Ergebnis zusätzlich als Datei speichern?", "saveNo": "Nein, die Tabelle am Bildschirm reicht",
 		"updAsk": "Version v%s ist da (du hast v%s). Jetzt aktualisieren?", "updNote": "vps2cloud v%s ist verfügbar: vps2cloud --update ausführen", "updDone": "Auf v%s aktualisiert", "updLatest": "vps2cloud v%s ist die neueste Version", "updFail": "Aktualisierung fehlgeschlagen: %s", "updPerm": "keine Berechtigung, %s zu ersetzen; mit sudo ausführen oder neu installieren: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Starte vps2cloud erneut, um die neue Version zu nutzen.",
-		"partial": "abgebrochen: die bisher gemessenen %d von %d Regionen",
+		"partial":   "abgebrochen: die bisher gemessenen %d von %d Regionen",
+		"proxyWarn": "Ein lokaler Proxy oder TUN scheint diese Verbindungen zu beantworten: die Zahlen sind die Entfernung zum Proxy, nicht zu den Regionen (%s)", "proxyFake": "falsche Adresse %s", "proxyFast": "alle Kontinente unter 5 ms", "proxyGap": "HTTPS über 50× langsamer als TCP",
+		"bestSoFar": "bisher am besten", "nearest": "Am nächsten: %s %s ms", "goodFor": "Geeignet für: %s (--preset game markiert sie in der Tabelle)", "fitOne": "%d Regionen passen für %s", "p_game": "Spiele", "p_call": "Anrufe", "p_ssh": "SSH", "p_web": "Web",
+		"lastItem": "Wie beim letzten Mal: %s", "badFlag": "die Option --%s gibt es nicht", "didYouMean": "meintest du --%s?", "seeHelp": "--help zeigt alle Optionen",
+		"u_title": "VPS2Cloud: Latenz von diesem Rechner zu %d Regionen von %d Cloud-Anbietern.", "u_what": "Was messen", "u_how": "Wie messen", "u_out": "Ausgabe", "u_list": "Endpunktliste",
+		"u_exit": "Exit-Status: 0 fertig · 1 Fehler · 2 falsche Optionen · 3 bester Median über --max-ms · 130 abgebrochen",
 	},
 	"pt": {
 		"title": "VPS2Cloud %s · latência desta máquina para %d regiões de nuvem", "machine": "Esta máquina: %s · Enter mantém o [padrão] · Ctrl-C sai",
@@ -274,7 +315,12 @@ var texts = map[string]map[string]string{
 		"shortFail": "o serviço de links curtos não respondeu; mostrando o link completo",
 		"saved":     "Salvo:", "saveQ": "Salvar também o resultado num arquivo?", "saveNo": "Não, a tabela na tela basta",
 		"updAsk": "Há uma versão nova, v%s (você tem v%s). Atualizar agora?", "updNote": "vps2cloud v%s disponível: execute vps2cloud --update", "updDone": "Atualizado para v%s", "updLatest": "vps2cloud v%s é a versão mais recente", "updFail": "falha ao atualizar: %s", "updPerm": "sem permissão para substituir %s; use sudo ou reinstale: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Execute vps2cloud de novo para usar a versão nova.",
-		"partial": "interrompido: as %d de %d regiões medidas até agora",
+		"partial":   "interrompido: as %d de %d regiões medidas até agora",
+		"proxyWarn": "Um proxy ou TUN local parece responder a estas conexões: os números são a distância até o proxy, não até as regiões (%s)", "proxyFake": "endereço falso %s", "proxyFast": "todos os continentes abaixo de 5 ms", "proxyGap": "HTTPS mais de 50× mais lento que TCP",
+		"bestSoFar": "melhor até agora", "nearest": "Mais próxima: %s %s ms", "goodFor": "Serve para: %s (--preset game as marca na tabela)", "fitOne": "%d regiões servem para %s", "p_game": "jogos", "p_call": "chamadas", "p_ssh": "SSH", "p_web": "web",
+		"lastItem": "Igual à última vez: %s", "badFlag": "não existe a opção --%s", "didYouMean": "quis dizer --%s?", "seeHelp": "--help lista as opções",
+		"u_title": "VPS2Cloud: latência desta máquina para %d regiões de %d provedores de nuvem.", "u_what": "O que medir", "u_how": "Como medir", "u_out": "Saída", "u_list": "Lista de endpoints",
+		"u_exit": "Código de saída: 0 concluído · 1 erro · 2 opções inválidas · 3 melhor mediana acima de --max-ms · 130 interrompido",
 	},
 	"ru": {
 		"title": "VPS2Cloud %s · задержка от этой машины до %d облачных регионов", "machine": "Эта машина: %s · Enter оставляет [по умолчанию] · Ctrl-C — выход",
@@ -294,6 +340,11 @@ var texts = map[string]map[string]string{
 		"shortFail": "сервис коротких ссылок не ответил; показана полная ссылка",
 		"saved":     "Сохранено:", "saveQ": "Сохранить результат ещё и в файл?", "saveNo": "Нет, достаточно таблицы на экране",
 		"updAsk": "Вышла версия v%s (у вас v%s). Обновить сейчас?", "updNote": "Доступна vps2cloud v%s: выполните vps2cloud --update", "updDone": "Обновлено до v%s", "updLatest": "vps2cloud v%s — последняя версия", "updFail": "не удалось обновить: %s", "updPerm": "нет прав заменить %s; запустите через sudo или переустановите: curl -fsSL https://v2c.1ms.dog/i | sh", "updRestart": "Запустите vps2cloud снова, чтобы использовать новую версию.",
-		"partial": "прервано: измерено %d из %d регионов",
+		"partial":   "прервано: измерено %d из %d регионов",
+		"proxyWarn": "Похоже, на эти соединения отвечает локальный прокси или TUN: цифры — расстояние до прокси, а не до регионов (%s)", "proxyFake": "поддельный адрес %s", "proxyFast": "все континенты быстрее 5 мс", "proxyGap": "HTTPS более чем в 50 раз медленнее TCP",
+		"bestSoFar": "лучший пока", "nearest": "Ближайший: %s %s мс", "goodFor": "Подходит для: %s (--preset game отметит их в таблице)", "fitOne": "%d регионов подходят для %s", "p_game": "игр", "p_call": "звонков", "p_ssh": "SSH", "p_web": "веба",
+		"lastItem": "Как в прошлый раз: %s", "badFlag": "опции --%s нет", "didYouMean": "вы имели в виду --%s?", "seeHelp": "--help покажет все опции",
+		"u_title": "VPS2Cloud: задержка от этой машины до %d регионов %d облачных провайдеров.", "u_what": "Что измерять", "u_how": "Как измерять", "u_out": "Вывод", "u_list": "Список эндпоинтов",
+		"u_exit": "Код выхода: 0 готово · 1 ошибка · 2 неверные опции · 3 лучшая медиана выше --max-ms · 130 прервано",
 	},
 }

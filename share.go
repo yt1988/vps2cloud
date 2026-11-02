@@ -39,10 +39,11 @@ const shareFormat = 2
 const shareFormatCDN = 3
 
 const (
-	flagPeak = 1 << iota // 20:00–23:00 local
-	flagV6               // the only family is IPv6
-	flagCLI              // made by this tool
-	flagBoth             // two blocks: IPv4, then IPv6
+	flagPeak  = 1 << iota // 20:00–23:00 local
+	flagV6                // the only family is IPv6
+	flagCLI               // made by this tool
+	flagBoth              // two blocks: IPv4, then IPv6
+	flagProxy             // a local proxy or TUN seems to have answered (see proxy.go): the numbers are not the regions'
 )
 
 var modeCode = map[string]byte{"tcp": 0, "https": 1, "icmp": 2}
@@ -58,7 +59,7 @@ func fingerprint(l *List) []byte {
 
 func fingerprintString(l *List) string { return base64.RawURLEncoding.EncodeToString(fingerprint(l)) }
 
-func encodeShare(secs []Section, l *List, modes []string, n int, o *Origin, at time.Time) []byte {
+func encodeShare(secs []Section, l *List, modes []string, n int, o *Origin, at time.Time, proxy bool) []byte {
 	var b bytes.Buffer
 	uv := func(v uint64) { b.Write(binary.AppendUvarint(nil, v)) }
 	str := func(s string) { uv(uint64(len(s))); b.WriteString(s) }
@@ -72,6 +73,9 @@ func encodeShare(secs []Section, l *List, modes []string, n int, o *Origin, at t
 		flags |= flagBoth
 	} else if secs[0].Fam == 6 {
 		flags |= flagV6
+	}
+	if proxy {
+		flags |= flagProxy
 	}
 	format := byte(shareFormat)
 	for _, s := range secs {
@@ -157,8 +161,8 @@ func encodeShare(secs []Section, l *List, modes []string, n int, o *Origin, at t
 	return z.Bytes()
 }
 
-func shareLink(secs []Section, l *List, modes []string, n int, o *Origin, at time.Time) string {
-	return siteURL() + "/r#s=" + base64.RawURLEncoding.EncodeToString(encodeShare(secs, l, modes, n, o, at))
+func shareLink(secs []Section, l *List, modes []string, n int, o *Origin, at time.Time, proxy bool) string {
+	return siteURL() + "/r#s=" + base64.RawURLEncoding.EncodeToString(encodeShare(secs, l, modes, n, o, at, proxy))
 }
 
 // shortenerURL is the 1ms.dog short link service. It stores the full link (and so the result in it) and returns

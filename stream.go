@@ -7,7 +7,8 @@ import (
 )
 
 // streamer formats one line per region as it finishes, in finishing order, to stderr: "[ 12/392]  AWS  eu-central-1
-// Frankfurt  4.8 T0". The sorted table still comes once at the end, on stdout.
+// Frankfurt  4.8 T0". These lines are for output that is not a terminal (a pipe, a CI log); a terminal gets a single
+// progress line instead. The sorted table comes once at the end, on stdout.
 type streamer struct {
 	list            *List
 	modes           []string
@@ -20,8 +21,8 @@ func newStreamer(list *List, eps []Endpoint, modes []string, fams []int, color b
 	s := &streamer{list: list, modes: modes, fams: len(fams) > 1, color: color}
 	for _, e := range eps {
 		s.wV = max(s.wV, utf8.RuneCountInString(s.vendor(e.Vendor)))
-		s.wR = max(s.wR, utf8.RuneCountInString(e.Region))
-		s.wC = max(s.wC, utf8.RuneCountInString(e.City))
+		s.wR = max(s.wR, utf8.RuneCountInString(regionText(e)))
+		s.wC = max(s.wC, utf8.RuneCountInString(cityText(e.City)))
 	}
 	s.wNo = len(strconv.Itoa(len(eps) * len(fams)))
 	return s
@@ -53,7 +54,13 @@ func padL(t string, w int) string {
 // line is the region's median in each mode asked for and the tier of the first, or why it has none.
 func (s *streamer) line(done, total int, j Job, r *Result) string {
 	no := "[" + padL(strconv.Itoa(done), s.wNo) + "/" + strconv.Itoa(total) + "]"
-	b := []string{s.paint(cDim, no), padR(s.vendor(j.E.Vendor), s.wV), padR(j.E.Region, s.wR), s.paint(cDim, padR(j.E.City, s.wC))}
+	b := []string{s.paint(cDim, no), padR(s.vendor(j.E.Vendor), s.wV)}
+	if s.wR > 0 {
+		b = append(b, padR(regionText(j.E), s.wR))
+	}
+	if s.wC > 0 {
+		b = append(b, s.paint(cDim, padR(cityText(j.E.City), s.wC)))
+	}
 	if s.fams {
 		b = append(b, s.paint(cDim, "IPv"+strconv.Itoa(j.Fam)))
 	}
