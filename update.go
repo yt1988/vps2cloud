@@ -17,16 +17,16 @@ import (
 	"time"
 )
 
-// Updates. The latest release is read at most once an hour, remembered in the config file: from v2c.1ms.dog/v, which
+// Updates. The latest release is read at most once an hour, remembered in the config file: from m2c.1ms.dog/v, which
 // asks GitHub and caches the answer, or else from GitHub's redirect for /releases/latest. Release files come the same
-// way: v2c.1ms.dog/dl/<tag>/ passes GitHub's on (and keeps them), since GitHub is often unreachable from mainland China. In a terminal the tool offers the update and, when the user
+// way: m2c.1ms.dog/dl/<tag>/ passes GitHub's on (and keeps them), since GitHub is often unreachable from mainland China. In a terminal the tool offers the update and, when the user
 // agrees, downloads the build for this system, checks it against the release's checksums.txt, puts it in place of the
 // running binary and starts it again with the same options. Without a terminal it only mentions the new version.
 // --offline, V2C_NO_UPDATE=1 and development builds skip all of it; --update checks and updates right away.
 
 var (
 	releaseURL = "https://github.com/yt1988/vps2cloud/releases"
-	mirrorURL  = "https://v2c.1ms.dog"
+	mirrorURL  = "https://m2c.1ms.dog"
 )
 
 const checkEvery = time.Hour

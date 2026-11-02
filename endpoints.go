@@ -21,9 +21,9 @@ import (
 //go:embed endpoints.json
 var embeddedList []byte
 
-// listURLs are tried in order. The first is a static file on v2c.1ms.dog; requests for it are counted (by the User-Agent
-// below, never by IP) to show how often the tool runs. The second is the same file on Me2Cloud's site.
-var listURLs = []string{"https://v2c.1ms.dog/endpoints.json", "https://m2c.1ms.dog/endpoints.json"}
+// listURLs are tried in order: the static file on Me2Cloud's site. Requests for it are counted (by the User-Agent below,
+// never by IP) to show how often the tool runs.
+var listURLs = []string{"https://m2c.1ms.dog/endpoints.json"}
 
 type Vendor struct {
 	Name    string `json:"name"`

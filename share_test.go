@@ -184,7 +184,7 @@ func TestShorten(t *testing.T) {
 	defer func(u string) { shortenerURL = u }(shortenerURL)
 	shortenerURL = srv.URL
 
-	long := "https://v2c.1ms.dog/r#s=abc"
+	long := "https://m2c.1ms.dog/r#s=abc"
 	if s, err := shorten(long, "test"); err != nil || s != "https://s.1ms.dog/x7Kp2a" || got.URL != long {
 		t.Fatalf("short %q, err %v, sent %q", s, err, got.URL)
 	}

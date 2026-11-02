@@ -1,23 +1,23 @@
 #!/bin/sh
-# VPS2Cloud installer: picks the build for this OS and CPU, downloads it from v2c.1ms.dog (which passes the GitHub
+# VPS2Cloud installer: picks the build for this OS and CPU, downloads it from m2c.1ms.dog (which passes the GitHub
 # release files on, for places where GitHub is slow or blocked) or else from GitHub itself, checks its SHA-256 against
 # the release's checksums.txt, and installs it as /usr/local/bin/vps2cloud (or ~/.local/bin when not root).
 #
-#   curl -fsSL https://v2c.1ms.dog/i | sh                  install, then start the test with its menu
-#   curl -fsSL https://v2c.1ms.dog/i | sh -s -- -p aws      install, then run with these options (no menu)
-#   curl -fsSL https://v2c.1ms.dog/i | sh -s -- --no-run    install only
-#   curl -fsSL https://v2c.1ms.dog/i | sh -s -- run [ARGS]  download to a temp dir, run once, delete
+#   curl -fsSL https://m2c.1ms.dog/i | sh                  install, then start the test with its menu
+#   curl -fsSL https://m2c.1ms.dog/i | sh -s -- -p aws      install, then run with these options (no menu)
+#   curl -fsSL https://m2c.1ms.dog/i | sh -s -- --no-run    install only
+#   curl -fsSL https://m2c.1ms.dog/i | sh -s -- run [ARGS]  download to a temp dir, run once, delete
 #
 # Environment: V2C_VERSION (a tag such as v0.1.0; default latest), V2C_DIR (install directory),
-# V2C_BASE (download base URL instead of v2c.1ms.dog and GitHub), V2C_NO_RUN=1 (install only).
+# V2C_BASE (download base URL instead of m2c.1ms.dog and GitHub), V2C_NO_RUN=1 (install only).
 set -eu
 
 REPO="yt1988/vps2cloud"
 VERSION="${V2C_VERSION:-latest}"
 if [ "$VERSION" = latest ]; then
-  BASES="${V2C_BASE:-https://v2c.1ms.dog/dl/latest https://github.com/$REPO/releases/latest/download}"
+  BASES="${V2C_BASE:-https://m2c.1ms.dog/dl/latest https://github.com/$REPO/releases/latest/download}"
 else
-  BASES="${V2C_BASE:-https://v2c.1ms.dog/dl/$VERSION https://github.com/$REPO/releases/download/$VERSION}"
+  BASES="${V2C_BASE:-https://m2c.1ms.dog/dl/$VERSION https://github.com/$REPO/releases/download/$VERSION}"
 fi
 
 say() { printf '%s\n' "$*" >&2; }

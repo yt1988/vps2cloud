@@ -1,6 +1,6 @@
 # Share link format
 
-A share link is `https://v2c.1ms.dog/r#s=<data>`. Everything is in the URL fragment, which browsers do not send to a server, so the site never sees a result unless the viewer opens it. `<data>` is base64url without padding of a raw DEFLATE stream (`CompressionStream("deflate-raw")` in browsers).
+A share link is `https://m2c.1ms.dog/r#s=<data>`. Everything is in the URL fragment, which browsers do not send to a server, so the site never sees a result unless the viewer opens it. `<data>` is base64url without padding of a raw DEFLATE stream (`CompressionStream("deflate-raw")` in browsers).
 
 The first decompressed byte tells the format apart. Format 1 is Me2Cloud's JSON (it starts with `{`). The CLI writes format 2:
 

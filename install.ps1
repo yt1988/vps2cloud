@@ -1,8 +1,8 @@
-# VPS2Cloud installer for Windows: downloads the build for this CPU from v2c.1ms.dog (which passes the GitHub release
+# VPS2Cloud installer for Windows: downloads the build for this CPU from m2c.1ms.dog (which passes the GitHub release
 # files on) or else from GitHub, checks its SHA-256 against the release's checksums.txt, installs it as
 # %LOCALAPPDATA%\Programs\vps2cloud\vps2cloud.exe, adds that folder to your PATH and starts the test with its menu.
 #
-#   irm https://v2c.1ms.dog/i.ps1 | iex
+#   irm https://m2c.1ms.dog/i.ps1 | iex
 #
 # Environment: V2C_VERSION (a tag such as v0.4.3; default latest), V2C_DIR (install folder), V2C_NO_RUN=1 (install only).
 $ErrorActionPreference = 'Stop'
@@ -12,9 +12,9 @@ $ProgressPreference = 'SilentlyContinue'   # the progress bar makes Invoke-WebRe
   $repo = 'yt1988/vps2cloud'
   $version = if ($env:V2C_VERSION) { $env:V2C_VERSION } else { 'latest' }
   $bases = if ($version -eq 'latest') {
-    @('https://v2c.1ms.dog/dl/latest', "https://github.com/$repo/releases/latest/download")
+    @('https://m2c.1ms.dog/dl/latest', "https://github.com/$repo/releases/latest/download")
   } else {
-    @("https://v2c.1ms.dog/dl/$version", "https://github.com/$repo/releases/download/$version")
+    @("https://m2c.1ms.dog/dl/$version", "https://github.com/$repo/releases/download/$version")
   }
   $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64' -or $env:PROCESSOR_ARCHITEW6432 -eq 'ARM64') { 'arm64' } else { 'amd64' }
   $file = "vps2cloud-windows-$arch.exe"

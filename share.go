@@ -24,7 +24,7 @@ func siteURL() string {
 	if s := strings.TrimRight(os.Getenv("V2C_SITE"), "/"); s != "" {
 		return s
 	}
-	return "https://v2c.1ms.dog"
+	return "https://m2c.1ms.dog"
 }
 
 // A share link carries the whole result in the URL fragment, which browsers never send to a server. Format 2 is

@@ -6,11 +6,7 @@
 
 单个静态二进制文件，没有任何依赖，全部 392 个区域一分钟左右测完。放在 VPS、路由器或 CI 里跑，就能看出哪些区域离它近；结果可以生成分享链接，也可以复制成 Markdown 表格贴到论坛。支持 10 种语言。
 
-它是 [Me2Cloud](https://m2c.1ms.dog) 的服务器版：Me2Cloud 在浏览器里测你家网络到各家云的延迟，两者用的是同一份节点清单。
-
-<p align="center"><a href="https://v2c.1ms.dog"><img src="docs/site.zh-CN.png" alt="v2c.1ms.dog 页面：选厂商、大洲和设置，复制命令" width="800"></a></p>
-
-**网站：[v2c.1ms.dog](https://v2c.1ms.dog)**：在页面上选厂商、大洲、IP 版本、测量方式和采样次数，自动生成命令，复制即可运行；工具输出的分享链接也在这里打开，看完整、可排序的结果页。
+它是 [Me2Cloud](https://m2c.1ms.dog) 的命令行版：Me2Cloud 在浏览器里测你家网络到各家云的延迟，两者用的是同一份节点清单。工具输出的分享链接也在 Me2Cloud 打开，是完整、可排序的结果页。
 
 <p align="center"><img src="docs/demo.zh-CN.svg" alt="vps2cloud 在纽伦堡的服务器上测 Hetzner 和 AWS 各区域" width="720"></p>
 
@@ -31,10 +27,10 @@
 ## 安装
 
 ```sh
-curl -fsSL https://v2c.1ms.dog/i | sh
+curl -fsSL https://m2c.1ms.dog/i | sh
 ```
 
-`v2c.1ms.dog/i` 提供的就是本仓库 Release 里的同一个脚本；完整写法是
+`m2c.1ms.dog/i` 提供的就是本仓库 Release 里的同一个脚本；完整写法是
 
 ```sh
 curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.sh | sh
@@ -45,30 +41,30 @@ curl -fsSL https://github.com/yt1988/vps2cloud/releases/latest/download/install.
 安装后直接按参数跑一次测试（不出菜单）：
 
 ```sh
-curl -fsSL https://v2c.1ms.dog/i | sh -s -- -p aws,gcp --ip both
+curl -fsSL https://m2c.1ms.dog/i | sh -s -- -p aws,gcp --ip both
 ```
 
 只运行一次、不安装：
 
 ```sh
-curl -fsSL https://v2c.1ms.dog/i | sh -s -- run
+curl -fsSL https://m2c.1ms.dog/i | sh -s -- run
 ```
 
 Windows 上，在 PowerShell 里运行：
 
 ```powershell
-irm https://v2c.1ms.dog/i.ps1 | iex
+irm https://m2c.1ms.dog/i.ps1 | iex
 ```
 
 它会安装到 `%LOCALAPPDATA%\Programs\vps2cloud`，把这个文件夹加进 PATH，然后打开菜单（[install.ps1](install.ps1)）。
 
 也可以直接从 [Releases](https://github.com/yt1988/vps2cloud/releases) 下载：Linux（amd64、arm64、armv7、386、riscv64，以及 OpenWrt 用的 mips、mipsle）、macOS、FreeBSD 和 Windows。
 
-安装脚本和程序自己的更新，都先从 `v2c.1ms.dog/dl/` 下载（它转发 GitHub Release 里的文件，因为国内访问 GitHub 常常很慢或连不上），失败了再从 GitHub 下载。无论从哪里下载，使用前都会用 Release 里的 `checksums.txt` 校验。
+安装脚本和程序自己的更新，都先从 `m2c.1ms.dog/dl/` 下载（它转发 GitHub Release 里的文件，因为国内访问 GitHub 常常很慢或连不上），失败了再从 GitHub 下载。无论从哪里下载，使用前都会用 Release 里的 `checksums.txt` 校验。
 
 ### 更新
 
-vps2cloud 最多每小时查一次最新版本（问 `v2c.1ms.dog/v`，不通再问 GitHub）。在终端里运行时，发现新版本会询问是否更新（`发现新版本 v0.5.0（当前 v0.4.0），现在更新吗？[Y/n]`）；确认后下载适合你系统的版本，用 Release 里的 `checksums.txt` 校验，替换自身，然后用同样的参数继续运行。没有终端时只打印一行提示。`vps2cloud --update` 立即更新；`--offline` 或 `V2C_NO_UPDATE=1` 关闭检查。如果程序装在你没有写权限的位置（比如没有 root 时的 `/usr/local/bin`），用 `sudo` 运行更新，或重新安装。
+vps2cloud 最多每小时查一次最新版本（问 `m2c.1ms.dog/v`，不通再问 GitHub）。在终端里运行时，发现新版本会询问是否更新（`发现新版本 v0.5.0（当前 v0.4.0），现在更新吗？[Y/n]`）；确认后下载适合你系统的版本，用 Release 里的 `checksums.txt` 校验，替换自身，然后用同样的参数继续运行。没有终端时只打印一行提示。`vps2cloud --update` 立即更新；`--offline` 或 `V2C_NO_UPDATE=1` 关闭检查。如果程序装在你没有写权限的位置（比如没有 root 时的 `/usr/local/bin`），用 `sudo` 运行更新，或重新安装。
 
 ## 用法
 
@@ -99,7 +95,7 @@ vps2cloud --max-ms 50              # 最快的区域也超过 50 ms 时，以退
 vps2cloud --list                   # 列出厂商；--list -p aws 列出 AWS 的全部区域
 ```
 
-`vps2cloud --help` 列出所有参数。在终端里，进度只占一行（已测数量和目前最快的区域），测完给出排好序的表；通过管道或在 CI 里运行时，每个区域测完就立刻在 stderr 输出一行，表仍然在 stdout。测到一半按 Ctrl-C，会停下来并显示已经测完的区域。也可以让 [v2c.1ms.dog](https://v2c.1ms.dog) 帮你写命令：在页面上选好，复制，粘贴。
+`vps2cloud --help` 列出所有参数。在终端里，进度只占一行（已测数量和目前最快的区域），测完给出排好序的表；通过管道或在 CI 里运行时，每个区域测完就立刻在 stderr 输出一行，表仍然在 stdout。测到一半按 Ctrl-C，会停下来并显示已经测完的区域。
 
 ### 语言
 
@@ -125,10 +121,10 @@ ICMP 需要 root、`CAP_NET_RAW`（`sudo setcap cap_net_raw+ep $(command -v vps2
 
 除了测量本身，每次运行会发出这些请求：
 
-- **节点清单**：从 `v2c.1ms.dog` 获取（失败时改用 `m2c.1ms.dog`，再失败就用程序内置的清单）。运行次数就是靠这个请求统计的：它的 User-Agent 只写了 `vps2cloud/<版本> (<系统>/<架构>[; ci])`，不包含这台机器的任何其他信息。加 `--offline` 就不发这个请求。
+- **节点清单**：从 `m2c.1ms.dog` 获取（失败时用程序内置的清单）。运行次数就是靠这个请求统计的：它的 User-Agent 只写了 `vps2cloud/<版本> (<系统>/<架构>[; ci])`，不包含这台机器的任何其他信息。加 `--offline` 就不发这个请求。
 - **Cloudflare 的 `/meta` 和 ident.me**：用来识别测试所在的网络（城市、运营商、ASN），显示在「出口」那一行。
 - **短链服务** `s.1ms.dog`：把分享链接变短（见下文）。
-- **检查更新**：最多每小时请求一次 `v2c.1ms.dog/v`（不通时改为 `github.com/yt1988/vps2cloud/releases/latest`，见[更新](#更新)）。加 `--offline` 或 `V2C_NO_UPDATE=1` 就不检查。
+- **检查更新**：最多每小时请求一次 `m2c.1ms.dog/v`（不通时改为 `github.com/yt1988/vps2cloud/releases/latest`，见[更新](#更新)）。加 `--offline` 或 `V2C_NO_UPDATE=1` 就不检查。
 
 分享链接是短链，比如 `https://s.1ms.dog/9eeaap`。它指向完整链接，结果就在完整链接里：各区域的数值和「出口」那一行（城市、运营商），永远不包含 IP 地址。为了生成短链，完整链接会**永久保存**在 `s.1ms.dog`（1ms.dog 部署在 Cloudflare 上的服务）上，方便以后随时打开；同样的结果总是得到同一个短链。除此之外不上传任何东西。
 

@@ -79,7 +79,7 @@ Usage: vps2cloud [options]
   -v, --version
       --update            update to the latest release now
 
-Each run fetches the latest endpoint list from v2c.1ms.dog. That request is counted (tool version, OS and CPU type,
+Each run fetches the latest endpoint list from m2c.1ms.dog. That request is counted (tool version, OS and CPU type,
 whether it runs in CI) and is the only one made besides the measurement itself and Cloudflare's /meta for the
 "from" line. --offline skips the download. Results are never uploaded; a share link carries them in the URL.
 
@@ -618,7 +618,7 @@ func userAgent() string {
 			break
 		}
 	}
-	return fmt.Sprintf("vps2cloud/%s (%s/%s%s; +https://v2c.1ms.dog)", version, runtime.GOOS, runtime.GOARCH, ci)
+	return fmt.Sprintf("vps2cloud/%s (%s/%s%s; +https://m2c.1ms.dog)", version, runtime.GOOS, runtime.GOARCH, ci)
 }
 
 func isTTY(w io.Writer) bool {
