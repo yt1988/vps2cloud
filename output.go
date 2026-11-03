@@ -399,7 +399,7 @@ func (v View) Markdown(w io.Writer) {
 		cols += fmt.Sprintf(" %s | %s |", T("h_jitter")+of, T("h_loss")+of)
 	}
 	if t := proxyText(v.Proxy, v.ProxyDetail); t != "" {
-		fmt.Fprintf(w, "\n> ⚠ %s\n", t)
+		fmt.Fprintf(w, "\n> ⚠ %s\n", strings.ReplaceAll(t, "\n", "\n> ")) // a warning on two lines stays one quote
 	}
 	sep := "|---:|---|---|---|"
 	for i := 4; i < strings.Count(cols, "|")-1; i++ {
