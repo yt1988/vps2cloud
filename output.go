@@ -127,7 +127,7 @@ func (v View) headline() string {
 	for _, x := range v.Modes {
 		m = append(m, T("m_"+x))
 	}
-	return fmt.Sprintf("%s · %s · %s · %s", strings.Join(m, " + "), T("nSamples", v.N), v.fams(), v.At.UTC().Format("2006-01-02 15:04 UTC"))
+	return fmt.Sprintf("%s · %s · %s · %s", strings.Join(m, " + "), TN("nSamples", v.N, v.N), v.fams(), v.At.UTC().Format("2006-01-02 15:04 UTC"))
 }
 
 func (v View) from() string {
@@ -350,9 +350,9 @@ func (v View) table(w io.Writer, s Section) {
 	}
 	noV6 := ""
 	if s.NoV6 > 0 {
-		noV6 = T("noV6", s.NoV6)
+		noV6 = TN("noV6", s.NoV6, s.NoV6)
 	}
-	fmt.Fprintf(w, "%s\n", paint(cDim, T("answered", answered(s, v.Modes), len(s.Res), noV6)))
+	fmt.Fprintf(w, "%s\n", paint(cDim, TN("answered", answered(s, v.Modes), answered(s, v.Modes), len(s.Res), noV6)))
 	// the conclusion: the nearest place, and how many regions suit each use (or the chosen preset). Not when a proxy
 	// answered: those numbers are nobody's distance.
 	if v.Proxy != "" {
@@ -374,7 +374,7 @@ func (v View) table(w io.Writer, s Section) {
 	}
 	if answered(s, v.Modes) > 0 {
 		if v.Preset != "" {
-			fmt.Fprintf(w, "%s\n", paint(cDim, T("fitOne", count(v.Preset), presetName(v.Preset))))
+			fmt.Fprintf(w, "%s\n", paint(cDim, TN("fitOne", count(v.Preset), count(v.Preset), presetName(v.Preset))))
 		} else {
 			var parts []string
 			for _, name := range []string{"game", "call", "ssh", "web"} {

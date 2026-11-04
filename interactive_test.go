@@ -159,8 +159,19 @@ func TestTextWidth(t *testing.T) {
 func TestTranslationsComplete(t *testing.T) {
 	for _, l := range languages {
 		for k := range texts["en"] {
-			if texts[l.Code][k] == "" {
+			if texts[l.Code][k] == "" && pluralBase(k) == "" {
 				t.Errorf("%s: missing %s", l.Code, k)
+			}
+		}
+		// a plural form belongs to a text of that language, and only languages with that form have it
+		for k := range texts[l.Code] {
+			if b := pluralBase(k); b != "" {
+				if texts[l.Code][b] == "" {
+					t.Errorf("%s: %s without %s", l.Code, k, b)
+				}
+				if f := k[len(b)+1:]; (f == "few" || f == "many") && l.Code != "ru" || f == "one" && (l.Code == "zh-CN" || l.Code == "zh-TW" || l.Code == "ja" || l.Code == "ko") {
+					t.Errorf("%s: %s has no %s form", l.Code, k, f)
+				}
 			}
 		}
 		if len(continentText[l.Code]) != len(continentText["en"]) {
@@ -211,5 +222,48 @@ func TestWizardLast(t *testing.T) {
 	got = wizard(strings.NewReader(keys(hasRoute(6), "1", ipKey, "", "", "")), io.Discard, l, false, nil)
 	if len(got) != 0 {
 		t.Fatalf("no last run: got %q", got)
+	}
+}
+
+// pluralBase is the text a plural form belongs to ("answered" for "answered_one"), or "" for a text that is not one.
+func pluralBase(k string) string {
+	for _, f := range []string{"_one", "_few", "_many"} {
+		if strings.HasSuffix(k, f) {
+			return strings.TrimSuffix(k, f)
+		}
+	}
+	return ""
+}
+
+func TestPlural(t *testing.T) {
+	defer func(l string) { lang = l }(lang)
+	cases := []struct {
+		lang string
+		n    int
+		want string
+	}{{"en", 1, "one"}, {"en", 0, "other"}, {"en", 2, "other"}, {"fr", 0, "one"}, {"fr", 1, "one"}, {"fr", 2, "other"}, {"pt", 0, "one"},
+		{"de", 1, "one"}, {"es", 21, "other"}, {"zh-CN", 1, "other"}, {"ja", 1, "other"}, {"ko", 1, "other"},
+		{"ru", 1, "one"}, {"ru", 21, "one"}, {"ru", 101, "one"}, {"ru", 11, "many"}, {"ru", 2, "few"}, {"ru", 4, "few"}, {"ru", 24, "few"},
+		{"ru", 12, "many"}, {"ru", 14, "many"}, {"ru", 5, "many"}, {"ru", 0, "many"}, {"ru", 88, "many"}, {"ru", 112, "many"}}
+	for _, c := range cases {
+		lang = c.lang
+		if got := plural(c.n); got != c.want {
+			t.Errorf("%s %d: got %s, want %s", c.lang, c.n, got, c.want)
+		}
+	}
+	// TN picks the form, and falls back to the plain text where a language has no form for that rule
+	lang = "ru"
+	for n, want := range map[int]string{1: "1 замер", 3: "3 замера", 5: "5 замеров", 21: "21 замер", 22: "22 замера"} {
+		if got := TN("nSamples", n, n); got != want {
+			t.Errorf("ru %d: %q", n, got)
+		}
+	}
+	lang = "en"
+	if TN("nSamples", 1, 1) != "1 sample" || TN("nSamples", 2, 2) != "2 samples" || TN("more", 1, 1) != T("more", 1) || TN("fitOne", 1, 1, "gaming") != "1 region fits gaming" || TN("answered", 1, 1, 1, "") != "1 region of 1 answered" {
+		t.Error("en forms")
+	}
+	lang = "zh-CN"
+	if TN("nSamples", 1, 1) != "每个 1 次" {
+		t.Error("zh-CN has one form only")
 	}
 }

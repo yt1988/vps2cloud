@@ -29,6 +29,42 @@ func T(key string, a ...any) string {
 	return s
 }
 
+// plural is the CLDR category of n in the current language: zh, ja and ko count with one form; en, de and es say
+// "one" for 1, fr and pt for 0 and 1; ru has "one" (1, 21, 31 … but not 11), "few" (2–4, 22–24 …) and "many".
+func plural(n int) string {
+	switch lang {
+	case "en", "de", "es":
+		if n == 1 {
+			return "one"
+		}
+	case "fr", "pt":
+		if n == 0 || n == 1 {
+			return "one"
+		}
+	case "ru":
+		switch m10, m100 := n%10, n%100; {
+		case m10 == 1 && m100 != 11:
+			return "one"
+		case m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14):
+			return "few"
+		default:
+			return "many"
+		}
+	}
+	return "other"
+}
+
+// TN is T for a text that counts something: key_one, key_few or key_many when the language's rule for n names
+// one and the language has that text, otherwise key. n is the counted number; a are all the arguments, n included.
+func TN(key string, n int, a ...any) string {
+	if p := plural(n); p != "other" {
+		if _, ok := texts[lang][key+"_"+p]; ok {
+			return T(key+"_"+p, a...)
+		}
+	}
+	return T(key, a...)
+}
+
 func knownLang(code string) string {
 	for _, l := range languages {
 		if strings.EqualFold(l.Code, code) {
@@ -108,14 +144,15 @@ var texts = map[string]map[string]string{
 		"again": "To run the same test again without the menu:", "langPick": "Choose a language", "langSaved": "Language: %s. Change it in the menu or with --lang.",
 		"m_tcp": "TCP handshake", "m_https": "HTTPS (reused connection)", "m_icmp": "ICMP ping", "nSamples": "%d samples", "from": "from", "unknownNet": "unknown network",
 		"h_provider": "Provider", "h_region": "Region", "h_city": "City", "h_median": "Median", "h_min": "Min", "h_p90": "P90", "h_jitter": "Jitter", "h_loss": "Loss", "h_tier": "Tier", "h_fit": "Fit",
-		"more": "… %d more (--top 0 shows all)", "best": "Best region per provider", "summary": "%d of %d regions answered%s in %s · endpoint list: %s", "noV6": " (%d more have no IPv6 address)",
+		"more": "… %d more (--top 0 shows all)", "best": "Best region per provider", "noV6": " (%d more have no IPv6 address)",
 		"link": "See and share:", "fullResult": "Full result", "topOf": "Top %d of %d regions.", "measuring": "measuring",
 		"icmpSkip": "ICMP isn't available here (needs root or CAP_NET_RAW).\n  Measuring with the other methods.", "noMatch": "no region matches those filters",
-		"back": "Back", "exit": "Exit", "answered": "%d of %d regions answered%s", "took": "Took %s · endpoint list: %s",
+		"back": "Back", "exit": "Exit", "answered": "%d regions of %d answered%s", "took": "Took %s · endpoint list: %s",
 		"shortFail": "the short link service didn't answer, so here is the full link",
 		"saved":     "Saved:", "saveQ": "Also save the result as a file?", "saveNo": "No, the table on screen is enough",
 		"updAsk": "vps2cloud v%s is out (you have v%s). Update now?", "updNote": "vps2cloud v%s is out: run vps2cloud --update", "updDone": "Updated to v%s", "updLatest": "vps2cloud v%s is the latest version", "updFail": "update failed: %s", "updPerm": "no permission to replace %s.\n  Run it with sudo, or install again:\n  curl -fsSL https://m2c.1ms.dog/i | sh", "updRestart": "Run vps2cloud again to use the new version.",
-		"partial":   "interrupted: the %d of %d regions measured so far",
+		"partial":      "interrupted: %d regions of %d measured so far",
+		"nSamples_one": "%d sample", "noV6_one": " (%d more has no IPv6 address)", "answered_one": "%d region of %d answered%s", "partial_one": "interrupted: %d region of %d measured so far", "fitOne_one": "%d region fits %s",
 		"proxyWarn": "A local proxy or TUN seems to be answering: %s.\n  The numbers show the distance to it, not to the regions.", "proxyFake": "fake address %s", "proxyFast": "every continent under 5 ms", "proxyGap": "HTTPS over 50× slower than TCP",
 		"bestSoFar": "best so far", "nearest": "Nearest: %s %s ms", "goodFor": "Good for: %s (--preset game marks them in the table)", "fitOne": "%d regions fit %s", "p_game": "gaming", "p_call": "video calls", "p_ssh": "SSH", "p_web": "websites",
 		"lastItem": "Same as last time: %s", "badFlag": "no option --%s", "didYouMean": "did you mean --%s?", "seeHelp": "--help lists all options",
@@ -133,7 +170,7 @@ var texts = map[string]map[string]string{
 		"again": "下次跳过菜单，直接运行同样的测试：", "langPick": "选择语言", "langSaved": "语言：%s。之后可以在菜单里或用 --lang 修改。",
 		"m_tcp": "TCP 握手", "m_https": "HTTPS（复用连接）", "m_icmp": "ICMP ping", "nSamples": "每个 %d 次", "from": "出口", "unknownNet": "未知网络",
 		"h_provider": "厂商", "h_region": "区域", "h_city": "城市", "h_median": "中位数", "h_min": "最低", "h_p90": "P90", "h_jitter": "抖动", "h_loss": "丢包", "h_tier": "分档", "h_fit": "符合",
-		"more": "… 还有 %d 个（加 --top 0 显示全部）", "best": "各厂商最快的区域", "summary": "%d / %d 个区域有回应%s，用时 %s · 测速点清单：%s", "noV6": "（另有 %d 个没有 IPv6 地址）",
+		"more": "… 还有 %d 个（加 --top 0 显示全部）", "best": "各厂商最快的区域", "noV6": "（另有 %d 个没有 IPv6 地址）",
 		"link": "查看和分享：", "fullResult": "完整结果", "topOf": "共 %[2]d 个区域，这里显示最快的 %[1]d 个。", "measuring": "正在测",
 		"icmpSkip": "这里用不了 ICMP（需要 root 或 CAP_NET_RAW）。\n  改用其他方式测。", "noMatch": "没有符合这些条件的区域",
 		"back": "返回上一步", "exit": "退出", "answered": "%d / %d 个区域有回应%s", "took": "用时 %s · 测速点清单：%s",
@@ -158,7 +195,7 @@ var texts = map[string]map[string]string{
 		"again": "下次略過選單，直接執行同樣的測試：", "langPick": "選擇語言", "langSaved": "語言：%s。之後可以在選單裡或用 --lang 修改。",
 		"m_tcp": "TCP 交握", "m_https": "HTTPS（沿用連線）", "m_icmp": "ICMP ping", "nSamples": "每個 %d 次", "from": "出口", "unknownNet": "不明網路",
 		"h_provider": "業者", "h_region": "區域", "h_city": "城市", "h_median": "中位數", "h_min": "最低", "h_p90": "P90", "h_jitter": "抖動", "h_loss": "封包遺失", "h_tier": "分級", "h_fit": "符合",
-		"more": "… 還有 %d 個（加 --top 0 顯示全部）", "best": "各業者最快的區域", "summary": "%d / %d 個區域有回應%s，耗時 %s · 測速點清單：%s", "noV6": "（另有 %d 個沒有 IPv6 位址）",
+		"more": "… 還有 %d 個（加 --top 0 顯示全部）", "best": "各業者最快的區域", "noV6": "（另有 %d 個沒有 IPv6 位址）",
 		"link": "檢視和分享：", "fullResult": "完整結果", "topOf": "共 %[2]d 個區域，這裡顯示最快的 %[1]d 個。", "measuring": "正在測",
 		"icmpSkip": "這裡無法使用 ICMP（需要 root 或 CAP_NET_RAW）。\n  改用其他方式測。", "noMatch": "沒有符合這些條件的區域",
 		"back": "返回上一步", "exit": "離開", "answered": "%d / %d 個區域有回應%s", "took": "耗時 %s · 測速點清單：%s",
@@ -183,7 +220,7 @@ var texts = map[string]map[string]string{
 		"again": "次回、メニューなしで同じテストを実行するには：", "langPick": "言語を選んでください", "langSaved": "言語：%s。メニューか --lang でいつでも変えられます。",
 		"m_tcp": "TCP ハンドシェイク", "m_https": "HTTPS（接続を使い回し）", "m_icmp": "ICMP ping", "nSamples": "各 %d 回", "from": "出口", "unknownNet": "不明なネットワーク",
 		"h_provider": "事業者", "h_region": "リージョン", "h_city": "都市", "h_median": "中央値", "h_min": "最小", "h_p90": "P90", "h_jitter": "ジッター", "h_loss": "ロス", "h_tier": "ランク", "h_fit": "適合",
-		"more": "… ほか %d 件（--top 0 ですべて表示）", "best": "事業者ごとの最速リージョン", "summary": "%d / %d リージョンが応答%s、所要 %s · 計測先の一覧：%s", "noV6": "（ほか %d 件は IPv6 アドレスなし）",
+		"more": "… ほか %d 件（--top 0 ですべて表示）", "best": "事業者ごとの最速リージョン", "noV6": "（ほか %d 件は IPv6 アドレスなし）",
 		"link": "結果の表示と共有：", "fullResult": "すべての結果", "topOf": "%[2]d リージョンのうち上位 %[1]d 件。", "measuring": "計測中",
 		"icmpSkip": "ここでは ICMP を使えません（root か CAP_NET_RAW が必要）。\n  ほかの方法で測ります。", "noMatch": "条件に合うリージョンがありません",
 		"back": "前に戻る", "exit": "終了", "answered": "%d / %d リージョンが応答%s", "took": "所要 %s · 計測先の一覧：%s",
@@ -208,7 +245,7 @@ var texts = map[string]map[string]string{
 		"again": "다음에 메뉴 없이 같은 테스트를 실행하려면:", "langPick": "언어를 고르세요", "langSaved": "언어: %s. 메뉴나 --lang으로 언제든 바꿀 수 있어요.",
 		"m_tcp": "TCP 핸드셰이크", "m_https": "HTTPS(연결 재사용)", "m_icmp": "ICMP ping", "nSamples": "각 %d회", "from": "출구", "unknownNet": "알 수 없는 네트워크",
 		"h_provider": "업체", "h_region": "리전", "h_city": "도시", "h_median": "중앙값", "h_min": "최소", "h_p90": "P90", "h_jitter": "지터", "h_loss": "손실", "h_tier": "등급", "h_fit": "적합",
-		"more": "… %d곳 더(--top 0이면 전체)", "best": "업체별 가장 빠른 리전", "summary": "리전 %d / %d곳 응답%s, 소요 %s · 측정 지점 목록: %s", "noV6": "(%d곳은 IPv6 주소 없음)",
+		"more": "… %d곳 더(--top 0이면 전체)", "best": "업체별 가장 빠른 리전", "noV6": "(%d곳은 IPv6 주소 없음)",
 		"link": "보기와 공유:", "fullResult": "전체 결과", "topOf": "리전 %[2]d곳 중 상위 %[1]d곳.", "measuring": "측정 중",
 		"icmpSkip": "여기서는 ICMP를 쓸 수 없어요(root 또는 CAP_NET_RAW 필요).\n  다른 방법으로 측정해요.", "noMatch": "조건에 맞는 리전이 없어요",
 		"back": "이전으로", "exit": "종료", "answered": "리전 %d / %d곳 응답%s", "took": "소요 %s · 측정 지점 목록: %s",
@@ -233,14 +270,15 @@ var texts = map[string]map[string]string{
 		"again": "Para repetir la misma prueba sin el menú:", "langPick": "Elige un idioma", "langSaved": "Idioma: %s. Puedes cambiarlo en el menú o con --lang.",
 		"m_tcp": "Handshake TCP", "m_https": "HTTPS (conexión reutilizada)", "m_icmp": "Ping ICMP", "nSamples": "%d mediciones", "from": "desde", "unknownNet": "red desconocida",
 		"h_provider": "Proveedor", "h_region": "Región", "h_city": "Ciudad", "h_median": "Mediana", "h_min": "Mín", "h_p90": "P90", "h_jitter": "Jitter", "h_loss": "Pérdida", "h_tier": "Nivel", "h_fit": "Cumple",
-		"more": "… %d más (--top 0 las muestra todas)", "best": "La mejor región de cada proveedor", "summary": "Respondieron %d de %d regiones%s en %s · lista de puntos: %s", "noV6": " (otras %d no tienen dirección IPv6)",
+		"more": "… %d más (--top 0 las muestra todas)", "best": "La mejor región de cada proveedor", "noV6": " (%d más sin dirección IPv6)",
 		"link": "Ver y compartir:", "fullResult": "Resultado completo", "topOf": "Las %d mejores de %d regiones.", "measuring": "midiendo",
 		"icmpSkip": "ICMP no está disponible aquí (requiere root o CAP_NET_RAW).\n  Se mide con los otros métodos.", "noMatch": "ninguna región cumple esos filtros",
-		"back": "Atrás", "exit": "Salir", "answered": "Respondieron %d de %d regiones%s", "took": "Tardó %s · lista de puntos: %s",
+		"back": "Atrás", "exit": "Salir", "answered": "%d regiones de %d respondieron%s", "took": "Tardó %s · lista de puntos: %s",
 		"shortFail": "el servicio de enlaces cortos no respondió; este es el enlace completo",
 		"saved":     "Guardado:", "saveQ": "¿Guardar también el resultado en un archivo?", "saveNo": "No, me basta con la tabla en pantalla",
 		"updAsk": "Salió vps2cloud v%s (tienes v%s). ¿Actualizar ahora?", "updNote": "Salió vps2cloud v%s: ejecuta vps2cloud --update", "updDone": "Actualizado a v%s", "updLatest": "vps2cloud v%s es la última versión", "updFail": "no se pudo actualizar: %s", "updPerm": "sin permiso para reemplazar %s.\n  Ejecútalo con sudo o vuelve a instalar:\n  curl -fsSL https://m2c.1ms.dog/i | sh", "updRestart": "Vuelve a ejecutar vps2cloud para usar la versión nueva.",
-		"partial":   "interrumpido: estas son las %d de %d regiones medidas hasta ahora",
+		"partial":      "interrumpido: %d regiones de %d medidas hasta ahora",
+		"nSamples_one": "%d medición", "answered_one": "%d región de %d respondió%s", "partial_one": "interrumpido: %d región de %d medida hasta ahora", "fitOne_one": "%d región sirve para %s",
 		"proxyWarn": "Parece un proxy o TUN local: %s.\n  Son distancias al proxy, no a las regiones.", "proxyFake": "dirección falsa %s", "proxyFast": "todos los continentes por debajo de 5 ms", "proxyGap": "HTTPS más de 50× más lento que TCP",
 		"bestSoFar": "la mejor hasta ahora", "nearest": "La más cercana: %s %s ms", "goodFor": "Sirve para: %s (--preset game las marca en la tabla)", "fitOne": "%d regiones sirven para %s", "p_game": "juegos", "p_call": "videollamadas", "p_ssh": "SSH", "p_web": "webs",
 		"lastItem": "Igual que la última vez: %s", "badFlag": "no existe la opción --%s", "didYouMean": "¿quisiste decir --%s?", "seeHelp": "--help muestra todas las opciones",
@@ -258,14 +296,15 @@ var texts = map[string]map[string]string{
 		"again": "Pour relancer le même test sans le menu :", "langPick": "Choisissez une langue", "langSaved": "Langue : %s. Modifiable dans le menu ou avec --lang.",
 		"m_tcp": "Poignée de main TCP", "m_https": "HTTPS (connexion réutilisée)", "m_icmp": "Ping ICMP", "nSamples": "%d mesures", "from": "depuis", "unknownNet": "réseau inconnu",
 		"h_provider": "Fournisseur", "h_region": "Région", "h_city": "Ville", "h_median": "Médiane", "h_min": "Min", "h_p90": "P90", "h_jitter": "Gigue", "h_loss": "Perte", "h_tier": "Niveau", "h_fit": "OK",
-		"more": "… %d de plus (--top 0 affiche tout)", "best": "Meilleure région par fournisseur", "summary": "%d régions sur %d ont répondu%s en %s · liste des points : %s", "noV6": " (%d autres n’ont pas d’adresse IPv6)",
+		"more": "… %d de plus (--top 0 affiche tout)", "best": "Meilleure région par fournisseur", "noV6": " (%d autres n’ont pas d’adresse IPv6)",
 		"link": "Voir et partager :", "fullResult": "Résultat complet", "topOf": "Les %d meilleures sur %d régions.", "measuring": "mesure en cours",
 		"icmpSkip": "ICMP n’est pas disponible ici (root ou CAP_NET_RAW requis).\n  Mesure avec les autres méthodes.", "noMatch": "aucune région ne correspond à ces filtres",
 		"back": "Retour", "exit": "Quitter", "answered": "%d régions sur %d ont répondu%s", "took": "Durée %s · liste des points : %s",
 		"shortFail": "le service de liens courts n’a pas répondu ; voici le lien complet",
 		"saved":     "Enregistré :", "saveQ": "Enregistrer aussi le résultat dans un fichier ?", "saveNo": "Non, le tableau à l’écran suffit",
 		"updAsk": "vps2cloud v%s est sorti (vous avez v%s). Mettre à jour ?", "updNote": "vps2cloud v%s est sorti : lancez vps2cloud --update", "updDone": "Mis à jour en v%s", "updLatest": "vps2cloud v%s est la dernière version", "updFail": "échec de la mise à jour : %s", "updPerm": "pas le droit de remplacer %s.\n  Lancez-le avec sudo ou réinstallez :\n  curl -fsSL https://m2c.1ms.dog/i | sh", "updRestart": "Relancez vps2cloud pour utiliser la nouvelle version.",
-		"partial":   "interrompu : voici les %d régions mesurées sur %d",
+		"partial":      "interrompu : voici %d régions mesurées sur %d",
+		"nSamples_one": "%d mesure", "noV6_one": " (%d autre n’a pas d’adresse IPv6)", "answered_one": "%d région sur %d a répondu%s", "partial_one": "interrompu : voici %d région mesurée sur %d", "fitOne_one": "%d région convient pour %s",
 		"proxyWarn": "Un proxy ou TUN local semble répondre : %s.\n  Ce sont les distances au proxy, pas aux régions.", "proxyFake": "fausse adresse %s", "proxyFast": "tous les continents sous 5 ms", "proxyGap": "HTTPS plus de 50× plus lent que TCP",
 		"bestSoFar": "meilleure pour l’instant", "nearest": "La plus proche : %s %s ms", "goodFor": "Convient pour : %s (--preset game les marque dans le tableau)", "fitOne": "%d régions conviennent pour %s", "p_game": "le jeu", "p_call": "la visio", "p_ssh": "SSH", "p_web": "un site web",
 		"lastItem": "Comme la dernière fois : %s", "badFlag": "l’option --%s n’existe pas", "didYouMean": "vouliez-vous dire --%s ?", "seeHelp": "--help liste toutes les options",
@@ -283,14 +322,15 @@ var texts = map[string]map[string]string{
 		"again": "Denselben Test ohne Menü noch mal starten:", "langPick": "Sprache wählen", "langSaved": "Sprache: %s. Änderbar im Menü oder mit --lang.",
 		"m_tcp": "TCP-Handshake", "m_https": "HTTPS (Verbindung wiederverwendet)", "m_icmp": "ICMP-Ping", "nSamples": "%d Messungen", "from": "von", "unknownNet": "unbekanntes Netz",
 		"h_provider": "Anbieter", "h_region": "Region", "h_city": "Stadt", "h_median": "Median", "h_min": "Min", "h_p90": "P90", "h_jitter": "Jitter", "h_loss": "Verlust", "h_tier": "Stufe", "h_fit": "Passt",
-		"more": "… %d weitere (--top 0 zeigt alle)", "best": "Beste Region je Anbieter", "summary": "%d von %d Regionen antworteten%s in %s · Messpunktliste: %s", "noV6": " (%d weitere ohne IPv6-Adresse)",
+		"more": "… %d weitere (--top 0 zeigt alle)", "best": "Beste Region je Anbieter", "noV6": " (%d weitere ohne IPv6-Adresse)",
 		"link": "Ansehen und teilen:", "fullResult": "Vollständiges Ergebnis", "topOf": "Die besten %d von %d Regionen.", "measuring": "Messung läuft",
 		"icmpSkip": "ICMP geht hier nicht (braucht root oder CAP_NET_RAW).\n  Gemessen wird mit den anderen Methoden.", "noMatch": "keine Region passt zu diesen Filtern",
-		"back": "Zurück", "exit": "Beenden", "answered": "%d von %d Regionen antworteten%s", "took": "Dauer %s · Messpunktliste: %s",
+		"back": "Zurück", "exit": "Beenden", "answered": "%d Regionen von %d antworteten%s", "took": "Dauer %s · Messpunktliste: %s",
 		"shortFail": "der Kurzlink-Dienst hat nicht geantwortet; hier der vollständige Link",
 		"saved":     "Gespeichert:", "saveQ": "Ergebnis zusätzlich als Datei speichern?", "saveNo": "Nein, die Tabelle auf dem Bildschirm reicht",
 		"updAsk": "vps2cloud v%s ist da (du hast v%s). Jetzt aktualisieren?", "updNote": "vps2cloud v%s ist da: vps2cloud --update ausführen", "updDone": "Auf v%s aktualisiert", "updLatest": "vps2cloud v%s ist die neueste Version", "updFail": "Aktualisierung fehlgeschlagen: %s", "updPerm": "keine Berechtigung, %s zu ersetzen.\n  Mit sudo starten oder neu installieren:\n  curl -fsSL https://m2c.1ms.dog/i | sh", "updRestart": "Starte vps2cloud neu, um die neue Version zu nutzen.",
-		"partial":   "abgebrochen: die bisher gemessenen %d von %d Regionen",
+		"partial":      "abgebrochen: %d Regionen von %d bisher gemessen",
+		"nSamples_one": "%d Messung", "answered_one": "%d Region von %d antwortete%s", "partial_one": "abgebrochen: %d Region von %d bisher gemessen", "fitOne_one": "%d Region passt für %s",
 		"proxyWarn": "Ein lokaler Proxy oder TUN antwortet wohl: %s.\n  Das ist der Weg zum Proxy, nicht zu den Regionen.", "proxyFake": "falsche Adresse %s", "proxyFast": "alle Kontinente unter 5 ms", "proxyGap": "HTTPS über 50× langsamer als TCP",
 		"bestSoFar": "bisher am besten", "nearest": "Am nächsten: %s %s ms", "goodFor": "Geeignet für: %s (--preset game markiert sie in der Tabelle)", "fitOne": "%d Regionen passen für %s", "p_game": "Gaming", "p_call": "Videocalls", "p_ssh": "SSH", "p_web": "Websites",
 		"lastItem": "Wie beim letzten Mal: %s", "badFlag": "die Option --%s gibt es nicht", "didYouMean": "meintest du --%s?", "seeHelp": "--help zeigt alle Optionen",
@@ -308,14 +348,15 @@ var texts = map[string]map[string]string{
 		"again": "Para repetir o mesmo teste sem o menu:", "langPick": "Escolha um idioma", "langSaved": "Idioma: %s. Dá para trocar no menu ou com --lang.",
 		"m_tcp": "Handshake TCP", "m_https": "HTTPS (conexão reaproveitada)", "m_icmp": "Ping ICMP", "nSamples": "%d medições", "from": "de", "unknownNet": "rede desconhecida",
 		"h_provider": "Provedor", "h_region": "Região", "h_city": "Cidade", "h_median": "Mediana", "h_min": "Mín", "h_p90": "P90", "h_jitter": "Jitter", "h_loss": "Perda", "h_tier": "Nível", "h_fit": "Cabe",
-		"more": "… mais %d (--top 0 mostra todas)", "best": "Melhor região de cada provedor", "summary": "%d de %d regiões responderam%s em %s · lista de pontos: %s", "noV6": " (outras %d não têm endereço IPv6)",
+		"more": "… mais %d (--top 0 mostra todas)", "best": "Melhor região de cada provedor", "noV6": " (mais %d sem endereço IPv6)",
 		"link": "Ver e compartilhar:", "fullResult": "Resultado completo", "topOf": "As %d melhores de %d regiões.", "measuring": "medindo",
 		"icmpSkip": "ICMP não está disponível aqui (requer root ou CAP_NET_RAW).\n  Medindo pelos outros métodos.", "noMatch": "nenhuma região bate com esses filtros",
-		"back": "Voltar", "exit": "Sair", "answered": "%d de %d regiões responderam%s", "took": "Levou %s · lista de pontos: %s",
+		"back": "Voltar", "exit": "Sair", "answered": "%d regiões de %d responderam%s", "took": "Levou %s · lista de pontos: %s",
 		"shortFail": "o serviço de links curtos não respondeu; este é o link completo",
 		"saved":     "Salvo:", "saveQ": "Salvar o resultado também num arquivo?", "saveNo": "Não, a tabela na tela basta",
 		"updAsk": "Saiu o vps2cloud v%s (você tem o v%s). Atualizar agora?", "updNote": "Saiu o vps2cloud v%s: rode vps2cloud --update", "updDone": "Atualizado para v%s", "updLatest": "vps2cloud v%s é a versão mais recente", "updFail": "falha ao atualizar: %s", "updPerm": "sem permissão para substituir %s.\n  Rode com sudo ou instale de novo:\n  curl -fsSL https://m2c.1ms.dog/i | sh", "updRestart": "Rode o vps2cloud de novo para usar a versão nova.",
-		"partial":   "interrompido: estas são as %d de %d regiões medidas até agora",
+		"partial":      "interrompido: %d regiões de %d medidas até agora",
+		"nSamples_one": "%d medição", "answered_one": "%d região de %d respondeu%s", "partial_one": "interrompido: %d região de %d medida até agora", "fitOne_one": "%d região serve para %s",
 		"proxyWarn": "Parece um proxy ou TUN local: %s.\n  São distâncias até o proxy, não até as regiões.", "proxyFake": "endereço falso %s", "proxyFast": "todos os continentes abaixo de 5 ms", "proxyGap": "HTTPS mais de 50× mais lento que TCP",
 		"bestSoFar": "melhor até agora", "nearest": "Mais próxima: %s %s ms", "goodFor": "Serve para: %s (--preset game marca na tabela)", "fitOne": "%d regiões servem para %s", "p_game": "jogos", "p_call": "videochamadas", "p_ssh": "SSH", "p_web": "sites",
 		"lastItem": "Igual à última vez: %s", "badFlag": "não existe a opção --%s", "didYouMean": "você quis dizer --%s?", "seeHelp": "--help mostra todas as opções",
@@ -333,14 +374,18 @@ var texts = map[string]map[string]string{
 		"again": "Чтобы повторить тот же тест без меню:", "langPick": "Выберите язык", "langSaved": "Язык: %s. Сменить можно в меню или через --lang.",
 		"m_tcp": "TCP-рукопожатие", "m_https": "HTTPS (то же соединение)", "m_icmp": "ICMP-пинг", "nSamples": "%d замеров", "from": "откуда", "unknownNet": "неизвестная сеть",
 		"h_provider": "Провайдер", "h_region": "Регион", "h_city": "Город", "h_median": "Медиана", "h_min": "Мин", "h_p90": "P90", "h_jitter": "Джиттер", "h_loss": "Потери", "h_tier": "Уровень", "h_fit": "Подходит",
-		"more": "… ещё %d (--top 0 покажет все)", "best": "Лучший регион каждого провайдера", "summary": "Ответили %d из %d регионов%s за %s · список точек: %s", "noV6": " (ещё у %d нет IPv6-адреса)",
+		"more": "… ещё %d (--top 0 покажет все)", "best": "Лучший регион каждого провайдера", "noV6": " (ещё у %d нет IPv6-адреса)",
 		"link": "Посмотреть и поделиться:", "fullResult": "Полный результат", "topOf": "Лучшие %d из %d регионов.", "measuring": "идёт замер",
 		"icmpSkip": "ICMP здесь недоступен (нужен root или CAP_NET_RAW).\n  Меряем другими способами.", "noMatch": "под эти фильтры не подходит ни один регион",
-		"back": "Назад", "exit": "Выход", "answered": "Ответили %d из %d регионов%s", "took": "Заняло %s · список точек: %s",
+		"back": "Назад", "exit": "Выход", "answered": "%d регионов из %d ответили%s", "took": "Заняло %s · список точек: %s",
 		"shortFail": "сервис коротких ссылок не ответил; вот полная ссылка",
 		"saved":     "Сохранено:", "saveQ": "Сохранить результат ещё и в файл?", "saveNo": "Нет, хватит таблицы на экране",
 		"updAsk": "Вышла vps2cloud v%s (у вас v%s). Обновить сейчас?", "updNote": "Вышла vps2cloud v%s: выполните vps2cloud --update", "updDone": "Обновлено до v%s", "updLatest": "vps2cloud v%s — последняя версия", "updFail": "не удалось обновить: %s", "updPerm": "нет прав заменить %s.\n  Запустите через sudo или переустановите:\n  curl -fsSL https://m2c.1ms.dog/i | sh", "updRestart": "Запустите vps2cloud снова, чтобы перейти на новую версию.",
-		"partial":   "прервано: вот %d из %d регионов, измеренных к этому моменту",
+		"partial":      "прервано: %d регионов из %d измерено к этому моменту",
+		"nSamples_one": "%d замер", "nSamples_few": "%d замера", "answered_one": "%d регион из %d ответил%s", "answered_few": "%d региона из %d ответили%s",
+		"partial_one": "прервано: %d регион из %d измерен к этому моменту", "partial_few": "прервано: %d региона из %d измерено к этому моменту",
+		"fitOne_one": "Подходят для «%[2]s»: %[1]d регион", "fitOne_few": "Подходят для «%[2]s»: %[1]d региона",
+		"all_one": "Все %d регион", "all_few": "Все %d региона", "title_one": "VPS2Cloud %s · задержка от этой машины до %d облачного региона",
 		"proxyWarn": "Похоже, отвечает локальный прокси или TUN: %s.\n  Это расстояние до прокси, а не до регионов.", "proxyFake": "поддельный адрес %s", "proxyFast": "все континенты быстрее 5 мс", "proxyGap": "HTTPS в 50+ раз медленнее TCP",
 		"bestSoFar": "лучший пока", "nearest": "Ближайший: %s %s мс", "goodFor": "Подходит под задачи: %s (--preset game отметит их в таблице)", "fitOne": "Подходят для «%[2]s»: %[1]d регионов", "p_game": "игры", "p_call": "видеозвонки", "p_ssh": "SSH", "p_web": "сайты",
 		"lastItem": "Как в прошлый раз: %s", "badFlag": "опции --%s нет", "didYouMean": "вы имели в виду --%s?", "seeHelp": "--help покажет все опции",

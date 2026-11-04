@@ -238,10 +238,10 @@ func wizard(in io.Reader, out io.Writer, l *List, askLang bool, last []string) [
 	for step != stepDone {
 		switch step {
 		case stepScope:
-			fmt.Fprintf(out, "\n%s\n%s\n", paint(cBold, T("title", version, len(l.Endpoints))), paint(cDim, T("machine", fams)))
+			fmt.Fprintf(out, "\n%s\n%s\n", paint(cBold, TN("title", len(l.Endpoints), version, len(l.Endpoints))), paint(cDim, T("machine", fams)))
 			// the CDN item only when the list has CDNs (older lists don't); the language item is always last; the
 			// previous run, when there was one, comes first and is the default
-			items := []string{T("all", len(l.Endpoints)), T("prov"), T("cont"), T("cdnItem", len(l.CDNs)), langLabel()}
+			items := []string{TN("all", len(l.Endpoints), len(l.Endpoints)), T("prov"), T("cont"), T("cdnItem", len(l.CDNs)), langLabel()}
 			if len(l.CDNs) == 0 {
 				items = append(items[:3], langLabel())
 			}

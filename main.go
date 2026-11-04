@@ -413,7 +413,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "vps2cloud: interrupted")
 			return 130
 		}
-		fmt.Fprintln(stderr, paint(cYellow, "vps2cloud: "+T("partial", len(kept), len(res))))
+		fmt.Fprintln(stderr, paint(cYellow, "vps2cloud: "+TN("partial", len(kept), len(kept), len(res))))
 		res = kept
 	}
 	// one section per family; regions without an IPv6 address are left out of the IPv6 one and counted instead
