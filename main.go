@@ -1,4 +1,4 @@
-// VPS2Cloud measures latency, jitter and loss from the machine it runs on to the regions of 22 cloud providers.
+// VPS2Cloud measures latency, jitter and timeouts from the machine it runs on to the regions of 22 cloud providers.
 // It uses Me2Cloud's endpoint list (github.com/yt1988/me2cloud) and needs nothing but this binary.
 package main
 
@@ -60,7 +60,7 @@ Usage: vps2cloud [options]
                           (vps2cloud-<date>-<time>.<ext>) while the table shows on screen
       --file NAME         the file to save to instead
       --stdout            print the md, json or csv to stdout instead of a file (for pipes)
-      --sort KEY          median (default), min, p90, jitter, loss, name
+      --sort KEY          median (default), min, p90, jitter, loss (timeouts; lost pings with ICMP), name
       --top N             only the N best regions (md defaults to 20)
       --preset NAME       mark regions that fit: game, call, ssh, web
       --long-link         print the full share link instead of a short s.1ms.dog one (nothing is uploaded)

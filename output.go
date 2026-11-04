@@ -225,17 +225,26 @@ func (v View) Table(w io.Writer) {
 	}
 }
 
+// lossHead names the column of samples with no answer. Only an ICMP echo that never came back is a lost packet;
+// a TCP handshake or HTTPS request that did not finish in time is a timeout, which may be a slow or blocking endpoint.
+func (v View) lossHead() string {
+	if len(v.Modes) > 0 && v.Modes[0] == "icmp" {
+		return T("h_loss")
+	}
+	return T("h_timeout")
+}
+
 func (v View) table(w io.Writer, s Section) {
-	head := []string{"#", T("h_provider"), T("h_region"), T("h_city"), T("h_median"), T("h_min"), T("h_p90"), T("h_jitter"), T("h_loss"), T("h_tier")}
+	head := []string{"#", T("h_provider"), T("h_region"), T("h_city"), T("h_median"), T("h_min"), T("h_p90"), T("h_jitter"), v.lossHead(), T("h_tier")}
 	multi := len(v.Modes) > 1
 	if multi {
-		// with several modes, jitter, loss and tier are the first mode's, and the headings say so
+		// with several modes, jitter, timeouts and tier are the first mode's, and the headings say so
 		head = []string{"#", T("h_provider"), T("h_region"), T("h_city")}
 		for _, m := range v.Modes {
 			head = append(head, strings.ToUpper(m))
 		}
 		of := " (" + strings.ToUpper(v.Modes[0]) + ")"
-		head = append(head, T("h_jitter")+of, T("h_loss")+of, T("h_tier")+of)
+		head = append(head, T("h_jitter")+of, v.lossHead()+of, T("h_tier")+of)
 	}
 	textTail := 1 // tier (and fit) are text at the end; the columns from the 5th up to them are numbers
 	if v.Preset != "" {
@@ -389,14 +398,14 @@ func (v View) table(w io.Writer, s Section) {
 func (v View) Markdown(w io.Writer) {
 	fmt.Fprintf(w, "**VPS2Cloud** %s %s · %s\n", T("from"), v.from(), v.headline())
 	first := fmt.Sprintf("| # | %s | %s | %s |", T("h_provider"), T("h_region"), T("h_city"))
-	cols := first + fmt.Sprintf(" %s | %s | %s |", T("h_median"), T("h_jitter"), T("h_loss"))
+	cols := first + fmt.Sprintf(" %s | %s | %s |", T("h_median"), T("h_jitter"), v.lossHead())
 	if len(v.Modes) > 1 {
 		cols = first
 		for _, m := range v.Modes {
 			cols += " " + strings.ToUpper(m) + " |"
 		}
 		of := " (" + strings.ToUpper(v.Modes[0]) + ")"
-		cols += fmt.Sprintf(" %s | %s |", T("h_jitter")+of, T("h_loss")+of)
+		cols += fmt.Sprintf(" %s | %s |", T("h_jitter")+of, v.lossHead()+of)
 	}
 	if t := proxyText(v.Proxy, v.ProxyDetail); t != "" {
 		fmt.Fprintf(w, "\n> ⚠ %s\n", strings.ReplaceAll(t, "\n", "\n> ")) // a warning on two lines stays one quote

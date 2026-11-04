@@ -2,7 +2,7 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-Latency, jitter and loss from the machine you run it on to **392 regions of 22 cloud providers**: AWS, Azure, Google Cloud, Oracle, Alibaba Cloud, Tencent Cloud, Huawei Cloud, Akamai (Linode), DigitalOcean, Vultr, Hetzner, OVHcloud, IBM Cloud, Scaleway, Volcengine, Baidu AI Cloud, Naver Cloud, IONOS Cloud, Aruba Cloud, Leaseweb, Gcore and Yandex Cloud.
+Latency, jitter and timeout rate from the machine you run it on to **392 regions of 22 cloud providers**: AWS, Azure, Google Cloud, Oracle, Alibaba Cloud, Tencent Cloud, Huawei Cloud, Akamai (Linode), DigitalOcean, Vultr, Hetzner, OVHcloud, IBM Cloud, Scaleway, Volcengine, Baidu AI Cloud, Naver Cloud, IONOS Cloud, Aruba Cloud, Leaseweb, Gcore and Yandex Cloud.
 
 One static binary, no dependencies, about a minute for all 392 regions. Run it on a VPS, a router or in CI to see which regions are close to it, then share the result as a link or paste it as a Markdown table. It speaks 10 languages.
 
@@ -99,7 +99,7 @@ vps2cloud -m all -p hetzner        # TCP, HTTPS and ICMP side by side
 vps2cloud --cdn                    # the nearest edge of 6 CDNs (Cloudflare, Akamai, CloudFront, Google, Fastly, Azure Front Door), by HTTPS
 vps2cloud -6                       # over IPv6 (regions without IPv6 are skipped and counted)
 vps2cloud --ip both                # IPv4 and IPv6 in one run: one report with a part for each, one share link
-vps2cloud --preset game            # mark regions that fit gaming (median ≤ 60 ms, jitter ≤ 10, no loss)
+vps2cloud --preset game            # mark regions that fit gaming (median ≤ 60 ms, jitter ≤ 10, no timeouts)
 vps2cloud -o md                    # also save a Markdown table (vps2cloud-<date>-<time>.md) for a forum post
 vps2cloud -o json --file out.json  # save JSON (or CSV) under a name of your choice
 vps2cloud -o json --stdout | jq '.regions[0]'   # print it instead, for pipes
@@ -121,7 +121,7 @@ The first time the menu runs it asks for a language (English, 简体中文, 繁�
 | `https` | A request on an open, reused HTTPS connection, timed until the headers arrive | The same number Me2Cloud shows in a browser; includes a little server time |
 | `icmp` | An ICMP echo | A classic ping. Some networks deprioritize ICMP, and Naver Cloud drops it |
 
-Per region you get the median, minimum, P90, jitter (mean difference between consecutive samples), loss and a tier: T0 ≤ 30 ms, T1 ≤ 80, T2 ≤ 150, T3 ≤ 250, T4 above. The numbers are computed the same way as in Me2Cloud.
+Per region you get the median, minimum, P90, jitter (mean difference between consecutive samples), timeout rate (the share of samples with no answer in time; in ICMP mode that is packet loss) and a tier: T0 ≤ 30 ms, T1 ≤ 80, T2 ≤ 150, T3 ≤ 250, T4 above. The numbers are computed the same way as in Me2Cloud.
 
 ICMP needs root, `CAP_NET_RAW` (`sudo setcap cap_net_raw+ep $(command -v vps2cloud)`) or a `net.ipv4.ping_group_range` that includes your group.
 

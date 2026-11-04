@@ -2,7 +2,7 @@
 
 [English](README.md) · **简体中文**
 
-在你运行它的机器上，测到 **22 家云厂商、392 个区域**的延迟、抖动和丢包：AWS、Azure、Google Cloud、Oracle、阿里云、腾讯云、华为云、Akamai（Linode）、DigitalOcean、Vultr、Hetzner、OVHcloud、IBM Cloud、Scaleway、火山引擎、百度智能云、Naver Cloud、IONOS Cloud、Aruba Cloud、Leaseweb、Gcore 和 Yandex Cloud。
+在你运行它的机器上，测到 **22 家云厂商、392 个区域**的延迟、抖动和超时率：AWS、Azure、Google Cloud、Oracle、阿里云、腾讯云、华为云、Akamai（Linode）、DigitalOcean、Vultr、Hetzner、OVHcloud、IBM Cloud、Scaleway、火山引擎、百度智能云、Naver Cloud、IONOS Cloud、Aruba Cloud、Leaseweb、Gcore 和 Yandex Cloud。
 
 单个静态二进制文件，没有任何依赖，全部 392 个区域一分钟左右测完。放在 VPS、路由器或 CI 里跑，就能看出哪些区域离它近；结果可以生成分享链接，也可以复制成 Markdown 表格贴到论坛。支持 10 种语言。
 
@@ -99,7 +99,7 @@ vps2cloud -m all -p hetzner        # TCP、HTTPS、ICMP 三种并排
 vps2cloud --cdn                    # 测 6 家 CDN（Cloudflare、Akamai、CloudFront、Google、Fastly、Azure Front Door）的最近节点，用 HTTPS
 vps2cloud -6                       # 走 IPv6（没有 IPv6 的区域会跳过并计数）
 vps2cloud --ip both                # IPv4 和 IPv6 一次测完：一份报告分两部分，一个分享链接
-vps2cloud --preset game            # 标出适合打游戏的区域（中位数 ≤ 60 ms、抖动 ≤ 10、不丢包）
+vps2cloud --preset game            # 标出适合打游戏的区域（中位数 ≤ 60 ms、抖动 ≤ 10、无超时）
 vps2cloud -o md                    # 同时保存一份 Markdown 表格（vps2cloud-<日期>-<时间>.md），方便贴论坛
 vps2cloud -o json --file out.json  # 保存成 JSON（或 CSV），文件名自己定
 vps2cloud -o json --stdout | jq '.regions[0]'   # 改为输出到屏幕，方便接管道
@@ -121,7 +121,7 @@ vps2cloud --list                   # 列出厂商；--list -p aws 列出 AWS 的
 | `https` | 在已建立、复用的 HTTPS 连接上发一次请求，计时到收到响应头 | 和 Me2Cloud 在浏览器里测出的数字一致，包含少量服务器处理时间 |
 | `icmp` | 一次 ICMP 回显 | 传统 ping。部分网络会降低 ICMP 的优先级，Naver Cloud 不回 ICMP |
 
-每个区域给出中位数、最小值、P90、抖动（相邻两次采样之差的平均值）、丢包和档位：T0 ≤ 30 ms、T1 ≤ 80、T2 ≤ 150、T3 ≤ 250，更高是 T4。计算方法和 Me2Cloud 完全一致。
+每个区域给出中位数、最小值、P90、抖动（相邻两次采样之差的平均值）、超时率（在时限内没有回应的比例；ICMP 模式下这就是丢包）和档位：T0 ≤ 30 ms、T1 ≤ 80、T2 ≤ 150、T3 ≤ 250，更高是 T4。计算方法和 Me2Cloud 完全一致。
 
 ICMP 需要 root、`CAP_NET_RAW`（`sudo setcap cap_net_raw+ep $(command -v vps2cloud)`），或者 `net.ipv4.ping_group_range` 覆盖了你所在的用户组。
 
