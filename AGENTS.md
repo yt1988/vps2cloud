@@ -54,8 +54,8 @@ Pick by what you changed:
 - **Output formats or the share link**: `share_test.go`. Open a `--long-link` link on m2c.1ms.dog and check it reads
   the same as the table. Old links must keep opening, so the format only grows (see `docs/share-format.md`).
 - **Measuring**: run against a few providers with each mode (`-m tcp`, `-m https`; `-m icmp` needs root or
-  `CAP_NET_RAW`). Before a release, 1ms.dog also runs the candidate once on its Tokyo server and compares with the
-  Tokyo watcher (Me2Cloud `server/watch/README.md`).
+  `CAP_NET_RAW`). Before a release, run the candidate once on a real server and compare its medians with the
+  previous release.
 - **Updates**: `update_test.go`.
 
 ## Release
@@ -67,7 +67,8 @@ A pushed tag `vX.Y.Z` runs `.github/workflows/release.yml`:
 - m2c.1ms.dog then serves the new version at `/v` and the files at `/dl/<tag>/…` (Me2Cloud `src/worker.js`). Installed
   copies offer the update within an hour.
 
-Releases are made only by the maintainer. Do not push a tag on your own. Pushing to `main` releases nothing.
+A tag reaches every installed copy within an hour, so push one only for a release that is meant and checked.
+Pushing to `main` releases nothing.
 
 After a release, check:
 
@@ -87,4 +88,4 @@ After a release, check:
 - **Gentle on providers**: at most four hosts of one provider at once, one sample at a time per host with a pause.
   Do not raise these without a reason; it is part of the README's promise.
 
-Decisions and plans the code does not show go in `docs/notes.md`.
+Technical reasons the code does not show go in `docs/notes.md`.
