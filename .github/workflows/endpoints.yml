@@ -10,7 +10,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Fetch
         run: |
           curl -fsSL https://raw.githubusercontent.com/yt1988/me2cloud/main/public/endpoints.json -o new.json
